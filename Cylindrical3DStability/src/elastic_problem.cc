@@ -86,7 +86,7 @@ void ElasticProblem::make_grid()
 
 void ElasticProblem::setup_system()
 {
-	std::string str = "params.dat";
+	std::string str = "../../CylindricalSystem/build/params.dat";
 	char *cstr = new char[str.length() + 1];
 	strcpy(cstr, str.c_str());
 	rf.readInputFile(cstr, dat);
@@ -1572,14 +1572,14 @@ void ElasticProblem::load_state(unsigned int indx){
 	if (indx==1){
 
 
-		std::string triang_file_name = "de/triang.tridat";
+		std::string triang_file_name = "../../CylindricalSystem/build/de/triang.tridat";
 		std::ifstream triang_in_u(triang_file_name.c_str());
 		boost::archive::text_iarchive triang_ar_u(triang_in_u);
 		x0triangulation.load(triang_ar_u,1);
 
 		x0dof_handler.distribute_dofs(x0fe);
 
-		std::string dof_file_name = "de/dof_handler.dofdat";
+		std::string dof_file_name = "../../CylindricalSystem/build/de/dof_handler.dofdat";
 		std::ifstream dof_in_u(dof_file_name.c_str());
 		boost::archive::text_iarchive dof_ar_u(dof_in_u);
 		x0dof_handler.load(dof_ar_u,1);
@@ -1590,14 +1590,14 @@ void ElasticProblem::load_state(unsigned int indx){
 		x0solution.reinit(x0dof_handler.n_dofs());
 		R0solution.reinit(x0dof_handler.n_dofs());
 
-		std::string R0_file_name = "de/R0.soldat";
+		std::string R0_file_name = "../../CylindricalSystem/build/de/R0.soldat";
 		std::ifstream R0_in_u(R0_file_name.c_str());
 		boost::archive::text_iarchive R0_ar_u(R0_in_u);
 		R0solution.load(R0_ar_u,1);
 
 	}
 
-	std::string sol_file_name = "de/solution_" + std::to_string(indx) + ".soldat";
+	std::string sol_file_name = "../../CylindricalSystem/build/de/solution_" + std::to_string(indx) + ".soldat";
 	std::ifstream sol_in_u(sol_file_name.c_str());
 	boost::archive::text_iarchive sol_ar_u(sol_in_u);
 	x0solution.load(sol_ar_u,1);
