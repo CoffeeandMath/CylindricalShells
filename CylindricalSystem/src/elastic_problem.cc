@@ -45,7 +45,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.05;
+	h = 0.01;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -54,7 +54,7 @@ void ElasticProblem::solve_path(){
 	double defmagmin = 0.00;
 	double defmagmax = 1.75*pi;
 	int Nmax = 200;
-	N2max = 400;
+	N2max = 100;
 	exportdata("params.dat");
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
 
@@ -491,7 +491,7 @@ void ElasticProblem::assemble_system()
 			Tensor<2,2> CovariantMetric;
 			Tensor<2,2> Covariant2Form;
 
-			double hsc = pow(h,2.0);
+			double hsc = 12*pow(h,2.0)/(1.0 - nu*nu);
 
 			double R_ref_q = Reference_Configuration_Vec[cell_index][q_index].get_R();
 
@@ -1132,7 +1132,7 @@ void ElasticProblem::exportdata(std::string outname){
 	rfile << h << '\n';
 	rfile << refinelevel << '\n';
 	rfile << 2*N2max << '\n';
-
+	rfile << nu << '\n';
 	rfile.close();
 }
 

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from numpy import random 
+import numpy as np
 import pandas as pd
 
 fig = plt.figure()
@@ -8,7 +9,9 @@ ax1 = plt.axes(xlim=(-1, 1), ylim=(-0.1,1.2))
 line, = ax1.plot([], [], lw=2)
 plt.xlabel('r')
 plt.ylabel('z')
-
+paramsf = open("build/params.dat")
+params = np.loadtxt(paramsf,delimiter=",");
+Nsteps = int(params[2])
 linecolor = "blue"
 ax1.axvline(0, linewidth = 0.8)
 plotlays, plotcols = [2], [linecolor,linecolor]
@@ -52,7 +55,7 @@ def animate(i):
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=integers(1,2000), interval=5, blit=True)
+                               frames=integers(1,Nsteps), interval=5, blit=True)
 
 
 

@@ -121,7 +121,7 @@ private:
 	int refinelevel = 7;
 	double h = 0.02;
 	double nval = 1.0;
-
+	double nu = 0.3;
 
 	std::vector<int> x_global_to_reduced;
 	std::vector<int> xi_global_to_reduced;

@@ -42,7 +42,12 @@ void read_file::readInputFile(char *filename, some_data &dat) {
 			goto fileClose;
 		}
 
-
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.nu));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
 
 
 		fileClose: {

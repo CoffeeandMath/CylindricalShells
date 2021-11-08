@@ -117,6 +117,7 @@ private:
 	double defmag = 0.0;
 	double defmag2 = 0.0;
 	double mu = 10.0;
+	double nu = 0.75;
 
 	std::vector<double> linspace(double, double, int);
 

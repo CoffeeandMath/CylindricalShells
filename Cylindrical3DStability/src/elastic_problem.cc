@@ -90,6 +90,7 @@ void ElasticProblem::setup_system()
 	char *cstr = new char[str.length() + 1];
 	strcpy(cstr, str.c_str());
 	rf.readInputFile(cstr, dat);
+	nu = dat.nu;
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
@@ -475,7 +476,7 @@ void ElasticProblem::assemble_system()
 
 
 
-			double hsc = pow(h,2.0);
+			double hsc = 12*pow(h,2.0)/(1.0 - nu*nu);
 
 
 
@@ -1344,7 +1345,7 @@ double ElasticProblem::calculate_stability2(){
 
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1.0, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 100.0*h, tol, eigenvalues, eigenvectors);
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		std::cout << eigenvalues[i] << std::endl;
 	}
