@@ -72,7 +72,7 @@ private:
 	void output_stability_matrices(int);
 	void save_current_state(unsigned int, bool);
 	void exportdata(std::string);
-
+	void flip_solution();
 	double Tensor_Inner(const Tensor<2,2> &, const Tensor<2,2> &);
 	double BilinearProduct(const Tensor<2,2> &, const Tensor<4,2> &, const Tensor<2,2> &);
 
@@ -106,18 +106,18 @@ private:
 	double tol = 1e-13;
 	double h = .01;
 	double z0 = 0.;
-	double r0 = .30;
+	double r0 = .10;
 	double Smax = 1.0;
 	int refinelevel = 7;
 
 
-	double Emodv = 1.0;
+	double Emodv = 1e-3;
 	double homog = 0.000;
 	double dhomog = 0.000;
 	double defmag = 0.0;
 	double defmag2 = 0.0;
-	double mu = 10.0;
-	double nu = 0.75;
+	double mu = 100.0;
+	double nu = 0.3;
 
 	std::vector<double> linspace(double, double, int);
 

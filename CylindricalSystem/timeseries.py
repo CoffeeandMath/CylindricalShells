@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 fig = plt.figure()
-ax1 = plt.axes(xlim=(-1, 1), ylim=(-0.1,1.2))
+ax1 = plt.axes(xlim=(-1, 1), ylim=(-1.2,1.2))
 line, = ax1.plot([], [], lw=2)
 plt.xlabel('r')
 plt.ylabel('z')

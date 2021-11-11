@@ -35,12 +35,6 @@ ElasticProblem::ElasticProblem()
 void ElasticProblem::solve_path(){
 
 
-
-
-
-
-
-
 	h = dat.h;
 
 	int Nmax = 5;
@@ -1345,7 +1339,7 @@ double ElasticProblem::calculate_stability2(){
 
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 100.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1000.0*h, tol, eigenvalues, eigenvectors);
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		std::cout << eigenvalues[i] << std::endl;
 	}

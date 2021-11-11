@@ -52,9 +52,9 @@ void ElasticProblem::solve_path(){
 	initialize_reference_config();
 	construct_reduced_mappings();
 	double defmagmin = 0.00;
-	double defmagmax = 1.75*pi;
+	double defmagmax = 0.6*pi;
 	int Nmax = 200;
-	N2max = 100;
+	N2max = 400;
 	exportdata("params.dat");
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
 
@@ -68,10 +68,10 @@ void ElasticProblem::solve_path(){
 		newton_raphson();
 		//output_data_csv();
 	}
-
-	homog = 0.0;
+	homog = 0.00001;
+	dhomog = 0.00001;
 	double defmag2min = 0.0;
-	double defmag2max = 0.4;
+	double defmag2max = 1.5*pi;
 
 	std::vector<double> defmag2vec = linspace(defmag2min,defmag2max,N2max);
 
@@ -254,8 +254,10 @@ void ElasticProblem::update_internal_metrics(){
 			Tensor<2,2> epsilontemp;
 			Tensor<2,2> btemp;
 			double Rval = Reference_Configuration_Vec[cell_index][q_index].get_R();
-			epsilontemp[0][0] = 0.5*defmag2;
-			epsilontemp[1][1] = -defmag2;
+			epsilontemp[0][0] = 0.0*0.5*defmag2;
+			epsilontemp[1][1] = -0.0*defmag2;
+			btemp[0][0] = -defmag2;
+			btemp[1][1] = -defmag2;
 
 
 			epsilon_a[cell_index][q_index] = epsilontemp;
@@ -913,6 +915,66 @@ void ElasticProblem::assemble_constraint_system()
 
 // I want to write a new function to deal with the boundary conditions as constraints
 
+void ElasticProblem::flip_solution(){
+
+
+	//DoFTools::make_hanging_node_constraints(dof_handler, constraints);
+	//VectorTools::interpolate_boundary_values(dof_handler,
+	//		1,
+	//		Functions::ZeroFunction<DIM>(DIM+5),
+	//		constraints);
+
+
+	const int ndofs = dof_handler.n_dofs();
+	// Constraint stuff
+	std::vector<bool> r_components = {true,false,false,false,false,false};
+	ComponentMask r_mask(r_components);
+
+	std::vector<bool> z_components = {false,true,false,false,false,false};
+	ComponentMask z_mask(z_components);
+
+	std::vector<bool> xir_components = {false,false,false,false,true,false};
+	ComponentMask xir_mask(r_components);
+
+	std::vector<bool> xiz_components = {false,false,false,false,false,true};
+	ComponentMask xiz_mask(z_components);
+
+
+	std::vector<bool> is_r_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, r_mask, is_r_comp);
+
+	std::vector<bool> is_z_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, z_mask, is_z_comp);
+
+	std::vector<bool> is_xir_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, xir_mask, is_xir_comp);
+
+	std::vector<bool> is_xiz_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, xiz_mask, is_xiz_comp);
+
+	std::vector<Point<DIM>> support_points(ndofs);
+	MappingQ1<DIM> mapping;
+	DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
+
+
+	for (unsigned int i = 0; i < ndofs; i++) {
+
+		///*
+
+		if (is_z_comp[i] && is_xiz_comp[i]){
+			solution[i] = -1.0*solution[i];
+		}
+
+
+		//*/
+
+
+	}
+	std::cout<< "Flipped Up-Down" << std::endl;
+
+
+
+}
 void ElasticProblem::setup_constraints(){
 	constraints.clear();
 
@@ -1164,7 +1226,9 @@ void ElasticProblem::newton_raphson() {
 	int cntr = 0;
 	prev_solution = solution;
 	while (stepsize > tol) {
+		prev_solution = solution;
 		cntr++;
+
 		assemble_system();
 
 		solve();

@@ -56,15 +56,18 @@ void Reference_Configuration::calc_covariants(){
 
 double Reference_Configuration::phifun(double s) {
 	double offset = defmag;
-	double offsetlim = 0.8;
-	if (offset > offsetlim) {
-		offset = offsetlim;
-	}
-	return 0.5*defmag*s*s + offset;
+	//double offsetlim = 0.8;
+	//if (offset > offsetlim) {
+	//	offset = offsetlim;
+	//}
+
+	//return 0.5*defmag*s*s + offset;
+	return -defmag * s + offset;
 }
 
 double Reference_Configuration::dphifun(double s) {
-	return defmag * s;
+	//return defmag * s;
+	return -defmag;
 }
 
 void Reference_Configuration::set_deformation_param(double lambda){
