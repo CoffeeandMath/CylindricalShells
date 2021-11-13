@@ -74,8 +74,8 @@ private:
 	void assemble_system();
 	void assemble_constraint_system();
 	void construct_reduced_mappings();
-	void calculate_stability();
-	double calculate_stability2();
+	Vector<double> calculate_stability();
+	void save_stability(std::vector<std::vector<Vector<double>>>);
 	void solve_path();
 	static void calc_MMult(Eigen::MatrixXd *,const Eigen::MatrixXd *, const Eigen::MatrixXd *);
 	static void calc_MAdd(Eigen::MatrixXd *,const Eigen::MatrixXd *, const Eigen::MatrixXd *,const double a, const double b);

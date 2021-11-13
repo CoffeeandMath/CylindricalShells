@@ -45,12 +45,12 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.01;
+	h = 0.005;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
 	initialize_reference_config();
-	construct_reduced_mappings();
+
 	double defmagmin = 0.00;
 	double defmagmax = 0.6*pi;
 	int Nmax = 200;
@@ -68,8 +68,8 @@ void ElasticProblem::solve_path(){
 		newton_raphson();
 		//output_data_csv();
 	}
-	homog = 0.00001;
-	dhomog = 0.00001;
+	homog = 0.0000;
+	dhomog = 0.0000;
 	double defmag2min = 0.0;
 	double defmag2max = 1.5*pi;
 
@@ -84,16 +84,36 @@ void ElasticProblem::solve_path(){
 
 	vector_to_csv(defmag2vec, "forward_defmag.csv");
 
+	assemble_constraint_system();
+	assemble_system();
+	construct_reduced_mappings();
+	vector_to_csv(x_global_to_reduced, "x_global_to_reduced.csv");
+	vector_to_csv(x_reduced_to_global, "x_reduced_to_global.csv");
+	vector_to_csv(xi_global_to_reduced, "xi_global_to_reduced.csv");
+	vector_to_csv(xi_reduced_to_global, "xi_reduced_to_global.csv");
+
+	std::vector<Vector<double>> evalsall(2*N2max);
+
+
 	for (double defmag2temp : defmag2vec){
 		cntr++;
 		defmag2 = defmag2temp;
 		initialize_reference_config();
 		update_internal_metrics();
+
+
 		std::cout << "Solve Iteration: " << cntr << "---------------------------" << std::endl;
 		newton_raphson();
+
+
 		assemble_constraint_system();
+		assemble_system();
+		construct_reduced_mappings();
 		output_stability_matrices(cntr);
 		output_data_csv_iterative("solutions",cntr);
+		evalsall[cntr-1] = calculate_stability();
+		save_eigenvalues(evalsall);
+
 		save_current_state(cntr, (cntr==1));
 	}
 
@@ -110,13 +130,18 @@ void ElasticProblem::solve_path(){
 		defmag2 = defmag3temp;
 		initialize_reference_config();
 		update_internal_metrics();
+
 		std::cout << "Solve Iteration: " << cntr << "---------------------------" << std::endl;
 		newton_raphson();
 
-
 		assemble_constraint_system();
+		assemble_system();
+		construct_reduced_mappings();
 		output_stability_matrices(cntr);
 		output_data_csv_iterative("solutions",cntr);
+
+		evalsall[cntr-1] = calculate_stability();
+		save_eigenvalues(evalsall);
 		save_current_state(cntr, (cntr==1));
 	}
 
@@ -138,8 +163,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																			<< std::endl << "   Total number of cells: "
-																																			<< triangulation.n_cells() << std::endl;
+																																									<< std::endl << "   Total number of cells: "
+																																									<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -285,7 +310,7 @@ void ElasticProblem::setup_system()
 	fr.resize(triangulation.n_active_cells());
 	fz.resize(triangulation.n_active_cells());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																										<< std::endl;
+            																																																																<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -766,8 +791,7 @@ void ElasticProblem::assemble_constraint_system()
 
 		const FEValuesExtractors::Scalar r(0);
 		const FEValuesExtractors::Scalar z(1);
-		const FEValuesExtractors::Scalar lambda_r(2);
-		const FEValuesExtractors::Scalar lambda_z(3);
+
 		const FEValuesExtractors::Scalar xi_r(4);
 		const FEValuesExtractors::Scalar xi_z(5);
 
@@ -776,16 +800,10 @@ void ElasticProblem::assemble_constraint_system()
 		fe_values[r].get_function_values(solution,r_q);
 		fe_values[z].get_function_values(solution,z_q);
 
-		fe_values[lambda_r].get_function_values(solution,lambda_r_q);
-		fe_values[lambda_z].get_function_values(solution, lambda_z_q);
+
 		fe_values[xi_r].get_function_values(solution, xi_r_q);
 		fe_values[xi_z].get_function_values(solution, xi_z_q);
 
-
-
-
-		fe_values[r].get_function_values(prev_solution,r_old_q);
-		fe_values[z].get_function_values(prev_solution,z_old_q);
 
 		fe_values[r].get_function_gradients(solution,dr_q);
 		fe_values[z].get_function_gradients(solution,dz_q);
@@ -807,30 +825,11 @@ void ElasticProblem::assemble_constraint_system()
 
 		for (const unsigned int q_index : fe_values.quadrature_point_indices()){
 
-			Tensor<2,2> CovariantMetric;
-			Tensor<2,2> Covariant2Form;
-
-			double hsc = pow(h,2.0);
 
 			double R_ref_q = Reference_Configuration_Vec[cell_index][q_index].get_R();
 
 
 			const auto &x_q = fe_values.quadrature_point(q_index);
-
-			CovariantMetric[0][0] = 0.5*(pow(dr_q[q_index][0],2.0) + pow(dz_q[q_index][0],2.0) - 1.0 );
-			//CovariantMetric[1][1] = 0.5*(1.0 - pow(R_ref_q/r_q[q_index],2.0));
-			CovariantMetric[1][1] = 0.5*(pow(r_q[q_index]/R_ref_q,2.0) - 1.0);
-			const double stretch_q = sqrt(pow(dr_q[q_index][0],2.0) + pow(dz_q[q_index][0],2.0));
-
-			Covariant2Form[0][0] = (dr_q[q_index][0]*dxi_z_q[q_index][0] - dxi_r_q[q_index][0]*dz_q[q_index][0])/stretch_q;
-			Covariant2Form[1][1] = dz_q[q_index][0]/(r_q[q_index]*stretch_q);
-
-			Tensor<2,2> InPlane = CovariantMetric  - epsilon_a[cell_index][q_index];
-			Tensor<2,2> Bending = Covariant2Form - Reference_Configuration_Vec[cell_index][q_index].get_Covariant_2Form() - b_a[cell_index][q_index];
-
-			Material_Vector_InPlane[cell_index].set_Params(Emodv, 0.0, InPlane);
-			Material_Vector_Bending[cell_index].set_Params(Emodv, 0.0, Bending);
-
 
 
 			for (const unsigned int i : fe_values.dof_indices())
@@ -838,8 +837,6 @@ void ElasticProblem::assemble_constraint_system()
 				const double R_i_q = fe_values[r].value(i,q_index);
 				const double Z_i_q = fe_values[z].value(i,q_index);
 
-				const double Lambda_r_i_q = fe_values[lambda_r].value(i,q_index);
-				const double Lambda_z_i_q = fe_values[lambda_z].value(i,q_index);
 
 				const double Xi_r_i_q = fe_values[xi_r].value(i,q_index);
 				const double Xi_z_i_q = fe_values[xi_z].value(i,q_index);
@@ -851,7 +848,7 @@ void ElasticProblem::assemble_constraint_system()
 				const Tensor<1,DIM> dXi_z_i_q = fe_values[xi_z].gradient(i,q_index);
 
 
-				const double dstretch_i_q = (dr_q[q_index][0]*dR_i_q[0] + dz_q[q_index][0]*dZ_i_q[0])/stretch_q;
+
 
 				Tensor<2,2> d_CovariantMetric_i_q;
 
@@ -862,8 +859,6 @@ void ElasticProblem::assemble_constraint_system()
 					const double R_j_q = fe_values[r].value(j,q_index);
 					const double Z_j_q = fe_values[z].value(j,q_index);
 
-					const double Lambda_r_j_q = fe_values[lambda_r].value(j,q_index);
-					const double Lambda_z_j_q = fe_values[lambda_z].value(j,q_index);
 
 					const double Xi_r_j_q = fe_values[xi_r].value(j,q_index);
 					const double Xi_z_j_q = fe_values[xi_z].value(j,q_index);
@@ -880,8 +875,8 @@ void ElasticProblem::assemble_constraint_system()
 
 					//cell_matrix(i,j) += mu*(dR_i_q[0] - Xi_r_i_q)*(dR_j_q[0] - Xi_r_j_q)*fe_values.JxW(q_index);
 					//cell_matrix(i,j) += mu*(dZ_i_q[0] - Xi_z_i_q)*(dZ_j_q[0] - Xi_z_j_q)*fe_values.JxW(q_index);
-					cell_matrix(i,j) += R_ref_q*(dR_i_q[0] - Xi_r_i_q)*(Xi_r_j_q)*fe_values.JxW(q_index);
-					cell_matrix(i,j) += R_ref_q*(dZ_i_q[0] - Xi_z_i_q)*(Xi_z_j_q)*fe_values.JxW(q_index);
+					cell_matrix(i,j) += 100000.0*R_ref_q*(dR_i_q[0] - Xi_r_i_q)*(Xi_r_j_q)*fe_values.JxW(q_index);
+					cell_matrix(i,j) += 100000.0*R_ref_q*(dZ_i_q[0] - Xi_z_i_q)*(Xi_z_j_q)*fe_values.JxW(q_index);
 					//*/
 				}
 
@@ -1332,7 +1327,7 @@ void ElasticProblem::construct_reduced_mappings(){
 
 		if (is_xi_r_comp[i] || is_xi_z_comp[i]){
 			xi_reduced_to_global.push_back(i);
-			xi_global_to_reduced[i] = xcntr;
+			xi_global_to_reduced[i] = xicntr;
 			xicntr++;
 			nxidofs++;
 		} else {
@@ -1342,6 +1337,144 @@ void ElasticProblem::construct_reduced_mappings(){
 	}
 
 
+	KtildeLA.reinit(nxdofs,nxdofs);
+	KtildeLA = 0.0;
+
+
+	Eigen::MatrixXd Kxx(nxdofs,nxdofs); Kxx.setZero();
+	Eigen::MatrixXd Kxxi(nxdofs,nxidofs); Kxxi.setZero();
+	Eigen::MatrixXd Kxixi(nxidofs,nxidofs); Kxixi.setZero();
+	Eigen::MatrixXd Kxix(nxidofs,nxdofs); Kxix.setZero();
+	Eigen::MatrixXd Cxxi(nxdofs,nxidofs); Cxxi.setZero();
+	Eigen::MatrixXd Cxixi(nxidofs,nxidofs); Cxixi.setZero();
+
+	std::cout << "Constructing Reduced Matrices" << std::endl;
+	for (unsigned int row = 0; row < system_matrix.m(); ++row)
+	{
+		const typename SparseMatrix<double>::const_iterator end_row = system_matrix.end(row);
+		int global_row = row;
+		for (typename SparseMatrix<double>::const_iterator entry = system_matrix.begin(row);
+				entry != end_row; ++entry)
+		{
+
+			int global_column = entry->column();
+			if(fabs(entry->value()) > 1e-15 ){
+
+				//       system_matrix_petsc.set(row, entry->column(),entry->value());
+				if(x_global_to_reduced[global_row] > -1 && x_global_to_reduced[global_column] > -1) {
+					Kxx(x_global_to_reduced[global_row] ,x_global_to_reduced[global_column]) += entry->value();
+				} else if (x_global_to_reduced[global_row] > -1 && xi_global_to_reduced[global_column] > -1){
+					Kxxi(x_global_to_reduced[global_row] ,xi_global_to_reduced[global_column]) += entry->value();
+				} else if (xi_global_to_reduced[global_row] > -1 && x_global_to_reduced[global_column] > -1){
+					Kxix(xi_global_to_reduced[global_row] ,x_global_to_reduced[global_column]) += entry->value();
+				} else if (xi_global_to_reduced[global_row] > -1 && xi_global_to_reduced[global_column] > -1){
+					Kxixi(xi_global_to_reduced[global_row] ,xi_global_to_reduced[global_column]) += entry->value();
+				}
+			}
+
+		}
+	}
+
+	if (XiProj.cols() < 1){
+		std::cout << "Constructing XiR" << std::endl;
+		for (unsigned int row = 0; row < constraint_matrix.m(); ++row)
+		{
+			const typename SparseMatrix<double>::const_iterator end_row = constraint_matrix.end(row);
+			int global_row = row;
+			for (typename SparseMatrix<double>::const_iterator entry = constraint_matrix.begin(row);
+					entry != end_row; ++entry)
+			{
+
+				int global_column = entry->column();
+				if(fabs(entry->value()) > 1e-15 ){
+					//       system_matrix_petsc.set(row, entry->column(),entry->value());
+
+					if (x_global_to_reduced[global_row] > -1 && xi_global_to_reduced[global_column] > -1){
+
+						Cxxi(x_global_to_reduced[global_row] ,xi_global_to_reduced[global_column]) += entry->value();
+
+					} else if (xi_global_to_reduced[global_row] > -1 && xi_global_to_reduced[global_column] > -1){
+						Cxixi(xi_global_to_reduced[global_row] ,xi_global_to_reduced[global_column]) += entry->value();
+					}
+				}
+
+			}
+		}
+
+		Eigen::MatrixXd Cxix = Cxxi.transpose();
+
+
+		XiProj = -1.0*Cxixi.inverse()*Cxix;
+
+		for (unsigned int i = 0; i < XiProj.rows(); i++){
+			for (unsigned int j = 0; j < XiProj.cols(); j++){
+				if (fabs(XiProj(i,j)) < 1e-15){
+					XiProj(i,j) = 0.0;
+				}
+			}
+		}
+		XiProjtrans = XiProj.transpose();
+
+	}
+	std::cout << "Calculating Ktilde" << std::endl;
+
+	Eigen::MatrixXd Ktildeasym = Kxx + Kxxi*XiProj + XiProjtrans*Kxix + XiProjtrans*Kxixi*XiProj;
+
+	Ktilde.setZero();
+	Ktilde = 0.5*(Ktildeasym + Ktildeasym.transpose());
+
+
+	for (unsigned int i = 0; i < Ktilde.rows(); i++) {
+		for (unsigned int j = 0; j < Ktilde.cols(); j++){
+			if (fabs(Ktilde(i,j)) < 1e-15){
+				Ktilde(i,j) = 0.0;
+			} else {
+				KtildeLA(i,j) = Ktilde(i,j);
+
+			}
+		}
+	}
+
+
+
+}
+
+Vector<double> ElasticProblem::calculate_stability(){
+	Vector<double> eigenvalues;
+	FullMatrix<double> eigenvectors;
+
+	double tol = 1.0e-10;
+	Vector<double> evalsout(10);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 100.0*h, tol, eigenvalues, eigenvectors);
+
+	for (unsigned int i = 0; i < 10; i++){
+		std::cout << eigenvalues[i] << std::endl;
+		evalsout[i] = eigenvalues[i];
+	}
+	//std::cout << "Smallest Eigenvalue : " << eigenvalues[0] << std::endl;
+
+
+	return evalsout;
+
+
+}
+
+void ElasticProblem::save_eigenvalues(std::vector<Vector<double>> evout){
+	std::string strout = "evals.csv";
+	std::ofstream rfile;
+	rfile.open(strout);
+
+	for (unsigned int i = 0; i < evout.size(); i++){
+		for (unsigned int j = 0; j < evout[i].size(); j++){
+			rfile << std::setprecision(17) << evout[i][j];
+			if (j < (evout[i].size() - 1)){
+				rfile << ',';
+			}
+		}
+		rfile << '\n';
+	}
+
+	rfile.close();
 }
 
 

@@ -31,6 +31,8 @@
 #include <math.h>
 #include <cstdlib>
 #include <filesystem>
+#include <Eigen/Dense>
+#include <deal.II/lac/lapack_full_matrix.h>
 //namespace fs = std::filesystem;
 
 #include "material_class.h"
@@ -75,7 +77,8 @@ private:
 	void flip_solution();
 	double Tensor_Inner(const Tensor<2,2> &, const Tensor<2,2> &);
 	double BilinearProduct(const Tensor<2,2> &, const Tensor<4,2> &, const Tensor<2,2> &);
-
+	Vector<double> calculate_stability();
+	void save_eigenvalues(std::vector<Vector<double>>);
 
 	Triangulation<DIM> triangulation;
 	FESystem<DIM>          fe;
@@ -127,6 +130,16 @@ private:
 	std::vector<int> xi_global_to_reduced;
 	std::vector<int> x_reduced_to_global;
 	std::vector<int> xi_reduced_to_global;
+
+
+	Eigen::MatrixXd XiProj;
+	Eigen::MatrixXd XiProjtrans;
+	Eigen::MatrixXd Ktilde;
+
+	Eigen::MatrixXd Kx1;
+	Eigen::MatrixXd Kx2;
+	LAPACKFullMatrix<double> KtildeLA;
+	Eigen::MatrixXd Evals;
 
 	unsigned int nxdofs = 0;
 	unsigned int nxidofs = 0;

@@ -44,10 +44,20 @@ void ElasticProblem::solve_path(){
 	assemble_constraint_system();
 
 	int Ntsteps = dat.Nsteps;
-
+	Vector<double> ev;
 	Evals.resize(Nmax, Ntsteps); Evals.setZero();
 
+	std::vector<std::vector<Vector<double>>> Evalsall;
+	Evalsall.resize(Ntsteps);
+	for (unsigned int i = 0; i < Ntsteps; i++){
+		Evalsall[i].resize(Nmax);
+		for (unsigned int j = 0; j < Nmax; j++){
+			Evalsall[i][j].reinit(10);
+		}
+
+	}
 	for (unsigned int ts = 1; ts <= Ntsteps; ts++){
+		Evalsall[ts-1].resize(Nmax);
 		std::cout << "TimeStep: " << ts << std::endl;
 		timestep = ts;
 		load_state(timestep);
@@ -57,9 +67,9 @@ void ElasticProblem::solve_path(){
 			assemble_system();
 
 			construct_reduced_mappings();
-			Evals(i,ts-1) = calculate_stability2();
+			Evalsall[ts-1][i] = calculate_stability();
 		}
-		writeToCSVfile("eigenvalues.csv", Evals);
+		save_stability(Evalsall);
 	}
 
 }
@@ -72,8 +82,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(dat.refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																											<< std::endl << "   Total number of cells: "
-																																																											<< triangulation.n_cells() << std::endl;
+																																																																	<< std::endl << "   Total number of cells: "
+																																																																	<< triangulation.n_cells() << std::endl;
 }
 
 
@@ -88,7 +98,7 @@ void ElasticProblem::setup_system()
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																		<< std::endl;
+            																																																																																								<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -1332,79 +1342,54 @@ void ElasticProblem::calc_MAdd(Eigen::MatrixXd * Kxout, const Eigen::MatrixXd * 
 void ElasticProblem::calc_Kx2(const Eigen::MatrixXd & Kxixi){
 	Kx2 = XiProjtrans*Kxixi*XiProj;
 }
-double ElasticProblem::calculate_stability2(){
+Vector<double> ElasticProblem::calculate_stability(){
 	std::cout << "Fourier Mode " << (int) nval << std::endl;
 	Vector<double> eigenvalues;
 	FullMatrix<double> eigenvectors;
-
+	Vector<double> evalsout(10);
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1000.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 10000.0*h, tol, eigenvalues, eigenvectors);
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
-		std::cout << eigenvalues[i] << std::endl;
+		//std::cout << eigenvalues[i] << std::endl;
 	}
 
+	for (unsigned int i = 0; i < evalsout.size(); i++){
 
-	if ((int) nval == 1){
-		return eigenvalues[4];
-	} else {
-		return eigenvalues[0];
+		evalsout[i] = eigenvalues[i];
+		std::cout << "Eigval: " << evalsout[i] << std::endl;
 	}
+
+	return evalsout;
 
 
 }
-void ElasticProblem::calculate_stability(){
 
 
-	double shift = -200.0;
-	int ksize = Ktilde.rows();
+void ElasticProblem::save_stability(std::vector<std::vector<Vector<double>>> eall){
+	int nsize = eall[0].size();
+	int tsize = eall.size();
 
-	Eigen::MatrixXd Kshift = Ktilde;
-	for (unsigned int i = 0; i < Kshift.cols(); i++){
-		Kshift(i,i) -= shift;
-	}
-	Eigen::MatrixXd Kshiftinv = Kshift.inverse();
-	Spectra::DenseSymMatProd<double> op(Kshiftinv);
+	for (unsigned int in = 0; in < nsize; in++){
+		std::string strout = "evals" + std::to_string(in+1) + ".csv";
+		std::ofstream rfile;
+		rfile.open(strout);
+		//std::cout << "in: " <<in << std::endl;
+		for (unsigned int it = 0; it < tsize; it++){
+			//std::cout << "it: " << it << std::endl;
+			for (unsigned int nv = 0; nv < eall[it][in].size(); nv++){
+				//std::cout << "nv: " << nv << std::endl;
+				rfile << std::setprecision(17) << eall[it][in][nv];
+				if (nv < (eall[it][in].size() - 1)){
+					rfile << ',';
+				}
+			}
+			rfile << '\n';
 
-	// Construct eigen solver object, requesting the largest three eigenvalues
-	Spectra::SymEigsSolver<Spectra::DenseSymMatProd<double>> eigs(op, 3, 7);
-
-	// Initialize and compute
-	eigs.init();
-	int nconv = eigs.compute(Spectra::SortRule::LargestMagn);
-
-	// Retrieve results
-	Eigen::VectorXd evalues;
-	if(eigs.info() == Spectra::CompInfo::Successful){
-		evalues.resize(eigs.eigenvalues().size());
-		for (unsigned int i = 0; i < eigs.eigenvalues().size(); i++) {
-			evalues[i] =  shift + pow(eigs.eigenvalues()[i],-1.0);
 		}
+
+		rfile.close();
 	}
-
-	std::cout << "Eigenvalues found:\n" << evalues << std::endl;
-
-
-	/*
-
-
-    // Construct matrix operation object using the wrapper class
-	Spectra::DenseSymShiftSolve<double> op(Ktilde);
-
-    // Construct eigen solver object with shift 0
-    // This will find eigenvalues that are closest to 0
-    Spectra::SymEigsShiftSolver<Spectra::DenseSymShiftSolve<double>> eigs(op, 5, 15, 100.0);
-
-    eigs.init();
-    eigs.compute(Spectra::SortRule::LargestMagn);
-    if (eigs.info() == Spectra::CompInfo::Successful)
-    {
-        Eigen::VectorXd evalues = eigs.eigenvalues();
-        // Will get (3.0, 2.0, 1.0)
-        std::cout << "Eigenvalues found:\n" << evalues << std::endl;
-    }
-	 */
-
 }
 
 std::vector<bool> ElasticProblem::create_bool_vector(int nsize,int ntrue){

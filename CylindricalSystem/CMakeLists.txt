@@ -43,6 +43,8 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/include
 )
 
+INCLUDE_DIRECTORIES("eigen-3.3.9/")
+
 ADD_LIBRARY(referenceclass ${CMAKE_SOURCE_DIR}/src/reference_configuration.cc)
 DEAL_II_SETUP_TARGET(referenceclass)
 
