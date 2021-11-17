@@ -45,16 +45,18 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.005;
+	h = 0.02;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
+
+	bool StabilityCalcs = true;
 	initialize_reference_config();
 
 	double defmagmin = 0.00;
 	double defmagmax = 0.6*pi;
 	int Nmax = 200;
-	N2max = 400;
+	N2max = 800;
 	exportdata("params.dat");
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
 
@@ -71,7 +73,7 @@ void ElasticProblem::solve_path(){
 	homog = 0.0000;
 	dhomog = 0.0000;
 	double defmag2min = 0.0;
-	double defmag2max = 1.5*pi;
+	double defmag2max = 2.0*pi;
 
 	std::vector<double> defmag2vec = linspace(defmag2min,defmag2max,N2max);
 
@@ -105,15 +107,16 @@ void ElasticProblem::solve_path(){
 		std::cout << "Solve Iteration: " << cntr << "---------------------------" << std::endl;
 		newton_raphson();
 
+		if(StabilityCalcs){
 
-		assemble_constraint_system();
-		assemble_system();
-		construct_reduced_mappings();
-		output_stability_matrices(cntr);
+			assemble_constraint_system();
+			assemble_system();
+			construct_reduced_mappings();
+			output_stability_matrices(cntr);
+			evalsall[cntr-1] = calculate_stability();
+			save_eigenvalues(evalsall);
+		}
 		output_data_csv_iterative("solutions",cntr);
-		evalsall[cntr-1] = calculate_stability();
-		save_eigenvalues(evalsall);
-
 		save_current_state(cntr, (cntr==1));
 	}
 
@@ -134,14 +137,16 @@ void ElasticProblem::solve_path(){
 		std::cout << "Solve Iteration: " << cntr << "---------------------------" << std::endl;
 		newton_raphson();
 
-		assemble_constraint_system();
-		assemble_system();
-		construct_reduced_mappings();
-		output_stability_matrices(cntr);
-		output_data_csv_iterative("solutions",cntr);
+		if(StabilityCalcs){
 
-		evalsall[cntr-1] = calculate_stability();
-		save_eigenvalues(evalsall);
+			assemble_constraint_system();
+			assemble_system();
+			construct_reduced_mappings();
+			output_stability_matrices(cntr);
+			evalsall[cntr-1] = calculate_stability();
+			save_eigenvalues(evalsall);
+		}
+		output_data_csv_iterative("solutions",cntr);
 		save_current_state(cntr, (cntr==1));
 	}
 
@@ -163,8 +168,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																									<< std::endl << "   Total number of cells: "
-																																									<< triangulation.n_cells() << std::endl;
+																																													<< std::endl << "   Total number of cells: "
+																																													<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -282,7 +287,7 @@ void ElasticProblem::update_internal_metrics(){
 			epsilontemp[0][0] = 0.0*0.5*defmag2;
 			epsilontemp[1][1] = -0.0*defmag2;
 			btemp[0][0] = -defmag2;
-			btemp[1][1] = -defmag2;
+			btemp[1][1] = -0.0*defmag2;
 
 
 			epsilon_a[cell_index][q_index] = epsilontemp;
@@ -310,7 +315,7 @@ void ElasticProblem::setup_system()
 	fr.resize(triangulation.n_active_cells());
 	fz.resize(triangulation.n_active_cells());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																<< std::endl;
+            																																																																				<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -518,7 +523,7 @@ void ElasticProblem::assemble_system()
 			Tensor<2,2> CovariantMetric;
 			Tensor<2,2> Covariant2Form;
 
-			double hsc = 12*pow(h,2.0)/(1.0 - nu*nu);
+			double hsc = 12.0*pow(h,2.0)/(1.0 - nu*nu);
 
 			double R_ref_q = Reference_Configuration_Vec[cell_index][q_index].get_R();
 
@@ -533,11 +538,11 @@ void ElasticProblem::assemble_system()
 			Covariant2Form[0][0] = (dr_q[q_index][0]*dxi_z_q[q_index][0] - dxi_r_q[q_index][0]*dz_q[q_index][0])/stretch_q;
 			Covariant2Form[1][1] = dz_q[q_index][0]/(r_q[q_index]*stretch_q);
 
-			Tensor<2,2> InPlane = CovariantMetric  - epsilon_a[cell_index][q_index];
+			Tensor<2,2> InPlane = CovariantMetric  - 0.0*epsilon_a[cell_index][q_index];
 			Tensor<2,2> Bending = Covariant2Form - Reference_Configuration_Vec[cell_index][q_index].get_Covariant_2Form() - b_a[cell_index][q_index];
 
-			Material_Vector_InPlane[cell_index].set_Params(Emodv, 0.0, InPlane);
-			Material_Vector_Bending[cell_index].set_Params(Emodv, 0.0, Bending);
+			Material_Vector_InPlane[cell_index].set_Params(1000.0*Emodv, nu, InPlane);
+			Material_Vector_Bending[cell_index].set_Params(Emodv, nu, Bending);
 
 
 
@@ -1188,8 +1193,9 @@ void ElasticProblem::exportdata(std::string outname){
 
 	rfile << h << '\n';
 	rfile << refinelevel << '\n';
-	rfile << 2*N2max << '\n';
+	rfile << N2max << '\n';
 	rfile << nu << '\n';
+	rfile << defmag2 << '\n';
 	rfile.close();
 }
 
@@ -1221,7 +1227,7 @@ void ElasticProblem::newton_raphson() {
 	int cntr = 0;
 	prev_solution = solution;
 	while (stepsize > tol) {
-		prev_solution = solution;
+		//prev_solution = solution;
 		cntr++;
 
 		assemble_system();
@@ -1609,6 +1615,18 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 		std::vector<bool> is_r_comp(dof_handler.n_dofs(), false);
 		DoFTools::extract_dofs(dof_handler, r_mask, is_r_comp);
 
+		std::vector<bool> z_components = {false,true,false,false,false,false};
+		ComponentMask z_mask(z_components);
+
+		std::vector<bool> is_z_comp(dof_handler.n_dofs(), false);
+		DoFTools::extract_dofs(dof_handler, z_mask, is_z_comp);
+
+		std::vector<bool> lr_components = {false,false,true,false,false,false};
+		ComponentMask lr_mask(lr_components);
+
+		std::vector<bool> is_lr_comp(dof_handler.n_dofs(), false);
+		DoFTools::extract_dofs(dof_handler, lr_mask, is_lr_comp);
+
 
 		for (unsigned int i = 0; i < R0vec.size(); i++){
 
@@ -1620,6 +1638,21 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 
 				R0vec[i] = Refobj.get_R();
 
+			} else if (is_z_comp[i]) {
+				Reference_Configuration Refobj;
+				Refobj.set_deformation_param(defmag);
+				Refobj.set_R0(r0);
+				Refobj.set_point(support_points[i][0]);
+
+				R0vec[i] = Refobj.get_phi();
+
+			} else if (is_lr_comp[i]){
+				Reference_Configuration Refobj;
+				Refobj.set_deformation_param(defmag);
+				Refobj.set_R0(r0);
+				Refobj.set_point(support_points[i][0]);
+
+				R0vec[i] = Refobj.get_dphi();
 			}
 
 		}

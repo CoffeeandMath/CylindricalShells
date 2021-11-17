@@ -22,6 +22,7 @@ public:
 	int refinelevel = 5;
 	int Nsteps = 10;
 	double nu = 0.5;
+	double defmag = 0.0;
 	char FolderName[MAXLINE];
 	char FileName[MAXLINE];
 

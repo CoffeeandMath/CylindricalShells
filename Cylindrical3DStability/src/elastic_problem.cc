@@ -36,14 +36,18 @@ void ElasticProblem::solve_path(){
 
 
 	h = dat.h;
-
+	int Ntsteps = dat.Nsteps;
+	double defmag = dat.defmag;
 	int Nmax = 5;
 	std::vector<double> nvec = linspace(1.0,(double)Nmax,Nmax);
+	std::vector<double> defmagvec = linspace(0.0,defmag,Ntsteps);
+
 
 	initialize_reference_config();
 	assemble_constraint_system();
 
-	int Ntsteps = dat.Nsteps;
+
+
 	Vector<double> ev;
 	Evals.resize(Nmax, Ntsteps); Evals.setZero();
 
@@ -82,8 +86,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(dat.refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																	<< std::endl << "   Total number of cells: "
-																																																																	<< triangulation.n_cells() << std::endl;
+																																																																					<< std::endl << "   Total number of cells: "
+																																																																					<< triangulation.n_cells() << std::endl;
 }
 
 
@@ -98,7 +102,7 @@ void ElasticProblem::setup_system()
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																								<< std::endl;
+            																																																																																												<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -294,6 +298,8 @@ void ElasticProblem::assemble_system()
 	std::vector<double> r_q(n_q_points);
 	std::vector<double> z_q(n_q_points);
 	std::vector<double> R_q(n_q_points);
+	std::vector<double> Phi_q(n_q_points);
+	std::vector<double> dPhi_q(n_q_points);
 	std::vector<double> dr_q(n_q_points);
 	std::vector<double> dz_q(n_q_points);
 	std::vector<Tensor<1,1>> ddr_q(n_q_points);
@@ -346,6 +352,7 @@ void ElasticProblem::assemble_system()
 
 		const FEValuesExtractors::Scalar r(0);
 		const FEValuesExtractors::Scalar z(1);
+		const FEValuesExtractors::Scalar lr(2);
 		const FEValuesExtractors::Scalar dr(4);
 		const FEValuesExtractors::Scalar dz(5);
 		//
@@ -399,6 +406,8 @@ void ElasticProblem::assemble_system()
 		fe_values_x0[dr].get_function_gradients(x0solution,ddr_q);
 		fe_values_x0[dz].get_function_gradients(x0solution,ddz_q);
 		fe_values_x0[r].get_function_values(R0solution,R_q);
+		fe_values_x0[z].get_function_values(R0solution,Phi_q);
+		fe_values_x0[lr].get_function_values(R0solution,dPhi_q);
 
 		//
 
@@ -480,17 +489,27 @@ void ElasticProblem::assemble_system()
 
 
 
-			double hsc = 12*pow(h,2.0)/(1.0 - nu*nu);
+			double hsc = 12.0*pow(h,2.0)/(1.0 - nu*nu);
 
 
+			Tensor<2,2> CovariantMetric;
+			CovariantMetric[0][0] =0.5*( dx0dS_q * dx0dS_q - 1.0);
+			CovariantMetric[1][1] = 0.5*(dx0dtheta_q * dx0dtheta_q/(Rref*Rref) - 1.0);
+			const double stretch_q = sqrt(pow(dr_q[q_index],2.0) + pow(dz_q[q_index],2.0));
+
+			Tensor<2,2> Covariant2Form;
+			Covariant2Form[0][0] = (dr_q[q_index]*ddz_q[q_index][0] - ddr_q[q_index][0]*dz_q[q_index])/stretch_q;
+			Covariant2Form[1][1] = dz_q[q_index]/(r_q[q_index]*stretch_q);
+
+			Tensor<2,2> Reference2Form;
+			Reference2Form[0][0] = -dPhi_q[q_index];
+			Reference2Form[1][1] = cos(Phi_q[q_index])/Rref;
+
+			Tensor<2,2> InPlane = CovariantMetric;
+			Tensor<2,2> Bending = Covariant2Form - Reference2Form;
 
 
-
-
-			Tensor<2,2> InPlane;
-			Tensor<2,2> Bending;
-
-			Material_Vector_InPlane[cell_index].set_Params(1.0, 0.0, InPlane);
+			Material_Vector_InPlane[cell_index].set_Params(1000.0*1.0, 0.0, InPlane);
 			Material_Vector_Bending[cell_index].set_Params(1.0, 0.0, Bending);
 
 
@@ -1349,7 +1368,7 @@ Vector<double> ElasticProblem::calculate_stability(){
 	Vector<double> evalsout(10);
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 10000.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 10000000.0*h, tol, eigenvalues, eigenvectors);
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		//std::cout << eigenvalues[i] << std::endl;
 	}

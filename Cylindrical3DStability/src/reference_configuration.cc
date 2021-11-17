@@ -89,3 +89,7 @@ Tensor<2,2> Reference_Configuration::get_Covariant_2Form(){
 double Reference_Configuration::get_R(){
 	return Rval;
 }
+
+double Reference_Configuration::get_phi(){
+	return phifun(S_Point);
+}

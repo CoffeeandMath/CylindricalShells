@@ -29,6 +29,7 @@ public:
 	Tensor<2,2> get_Covariant_2Form();
 	void set_R0(double);
 	double get_R();
+	double get_phi();
 
 
 private:
