@@ -33,6 +33,7 @@
 #include <filesystem>
 #include <Eigen/Dense>
 #include <deal.II/lac/lapack_full_matrix.h>
+#include "internalvariable.h"
 //namespace fs = std::filesystem;
 
 #include "material_class.h"
@@ -123,8 +124,10 @@ private:
 	double nu = 0.3;
 
 	std::vector<double> linspace(double, double, int);
-
-
+	Tensor<2,2> inplane_dir;
+	Tensor<2,2> bending_dir;
+	internal_variable<Tensor<2,2>> inplane_a;
+	internal_variable<Tensor<2,2>> bending_a;
 
 	std::vector<int> x_global_to_reduced;
 	std::vector<int> xi_global_to_reduced;

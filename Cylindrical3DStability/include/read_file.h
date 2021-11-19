@@ -25,6 +25,9 @@ public:
 	double defmag = 0.0;
 	char FolderName[MAXLINE];
 	char FileName[MAXLINE];
+	double bending00 = 0.0;
+	double bending01 = 0.0;
+	double bending11 = 0.0;
 
 };
 

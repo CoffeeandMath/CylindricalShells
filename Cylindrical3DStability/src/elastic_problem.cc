@@ -39,6 +39,11 @@ void ElasticProblem::solve_path(){
 	int Ntsteps = dat.Nsteps;
 	double defmag = dat.defmag;
 	int Nmax = 5;
+	Tensor<2,2> bending_dir;
+	bending_dir[0][0] = dat.bending00;
+	bending_dir[0][1] = dat.bending01;
+	bending_dir[1][0] = dat.bending01;
+	bending_dir[1][1] = dat.bending11;
 	std::vector<double> nvec = linspace(1.0,(double)Nmax,Nmax);
 	std::vector<double> defmagvec = linspace(0.0,defmag,Ntsteps);
 
@@ -61,12 +66,17 @@ void ElasticProblem::solve_path(){
 
 	}
 	for (unsigned int ts = 1; ts <= Ntsteps; ts++){
+
+		defstep = defmagvec[ts-1];
 		Evalsall[ts-1].resize(Nmax);
 		std::cout << "TimeStep: " << ts << std::endl;
 		timestep = ts;
 		load_state(timestep);
+
+		current_bending_a = defstep * bending_dir;
 		for (unsigned int i = 0; i < Nmax; i++){
 			nval = nvec[i];
+			update_internal_metrics();
 			std::cout << "-----------------------" << std::endl;
 			assemble_system();
 
@@ -86,8 +96,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(dat.refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																					<< std::endl << "   Total number of cells: "
-																																																																					<< triangulation.n_cells() << std::endl;
+																																																																											<< std::endl << "   Total number of cells: "
+																																																																											<< triangulation.n_cells() << std::endl;
 }
 
 
@@ -102,7 +112,7 @@ void ElasticProblem::setup_system()
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																												<< std::endl;
+            																																																																																																		<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -118,6 +128,12 @@ void ElasticProblem::setup_system()
 	Material_Vector_InPlane.resize(triangulation.n_active_cells());
 	Material_Vector_Bending.resize(triangulation.n_active_cells());
 	Reference_Configuration_Vec.resize(triangulation.n_active_cells());
+
+	QGauss<DIM> quadrature_formula(fe.degree + quadegadd);
+	inplane_a.resize(triangulation.n_active_cells(), quadrature_formula.size());
+	bending_a.resize(triangulation.n_active_cells(), quadrature_formula.size());
+
+
 
 	std::ofstream out("sparsity_pattern.svg");
 	sparsity_pattern.print_svg(out);
@@ -505,11 +521,13 @@ void ElasticProblem::assemble_system()
 			Reference2Form[0][0] = -dPhi_q[q_index];
 			Reference2Form[1][1] = cos(Phi_q[q_index])/Rref;
 
-			Tensor<2,2> InPlane = CovariantMetric;
-			Tensor<2,2> Bending = Covariant2Form - Reference2Form;
 
 
-			Material_Vector_InPlane[cell_index].set_Params(1000.0*1.0, 0.0, InPlane);
+			Tensor<2,2> InPlane = CovariantMetric - inplane_a.get_value(cell_index, q_index);
+			Tensor<2,2> Bending = Covariant2Form - Reference2Form - bending_a.get_value(cell_index, q_index);
+
+
+			Material_Vector_InPlane[cell_index].set_Params(1.0, 0.0, InPlane);
 			Material_Vector_Bending[cell_index].set_Params(1.0, 0.0, Bending);
 
 
@@ -606,37 +624,37 @@ void ElasticProblem::assemble_system()
 
 				Tensor<2,2> Db1_cos_i_q;
 				Db1_cos_i_q[0][0] = n0_q*ddUddS_cos_i_q;
-				Db1_cos_i_q[0][1] = n0_q*ddUdSdtheta_cos_i_q/(Rref);
+				Db1_cos_i_q[0][1] = n0_q*ddUdSdtheta_cos_i_q/r_q[q_index];
 				Db1_cos_i_q[1][0] = Db1_cos_i_q[0][1];
-				Db1_cos_i_q[1][1] = n0_q*ddUddtheta_cos_i_q/(Rref*Rref);
+				Db1_cos_i_q[1][1] = n0_q*ddUddtheta_cos_i_q/(pow(r_q[q_index],2.0));
 
 				Tensor<2,2> Db1_sin_i_q;
 				Db1_sin_i_q[0][0] = n0_q*ddUddS_sin_i_q;
-				Db1_sin_i_q[0][1] = n0_q*ddUdSdtheta_sin_i_q/(Rref);
+				Db1_sin_i_q[0][1] = n0_q*ddUdSdtheta_sin_i_q/r_q[q_index];
 				Db1_sin_i_q[1][0] = Db1_sin_i_q[0][1];
-				Db1_sin_i_q[1][1] = n0_q*ddUddtheta_sin_i_q/(Rref*Rref);
+				Db1_sin_i_q[1][1] = n0_q*ddUddtheta_sin_i_q/(pow(r_q[q_index],2.0));
 
-
+				Tensor<1,3> df_cos_i_q = (cross_product(dx0dS_q,dUdtheta_cos_i_q) - cross_product(dx0dtheta_q,dUdS_cos_i_q));
 				Tensor<2,3> scaledn0proj;
-				scaledn0proj = (Iden3D - outer_product(n0_q,n0_q))/(cross_product(dx0dS_q,dx0dtheta_q).norm());
+				double fnorm_q = (cross_product(dx0dS_q,dx0dtheta_q).norm());
+				scaledn0proj = (Iden3D - outer_product(n0_q,n0_q))/fnorm_q;
 
-				Tensor<1,3> dndxdotu;
-				dndxdotu = scaledn0proj*(cross_product(dx0dS_q,dUdtheta_cos_i_q) - cross_product(dx0dtheta_q,dUdS_cos_i_q));
+				Tensor<1,3> dndxdotu_cos_i_q = scaledn0proj*df_cos_i_q;
 
 				Tensor<2,2> Db2_cos_i_q;
-				Db2_cos_i_q[0][0] = dndxdotu*ddx0ddS_q;
-				Db2_cos_i_q[0][1] = dndxdotu*ddx0dSdtheta_q/Rref;
+				Db2_cos_i_q[0][0] = dndxdotu_cos_i_q*ddx0ddS_q;
+				Db2_cos_i_q[0][1] = dndxdotu_cos_i_q*ddx0dSdtheta_q/r_q[q_index];
 				Db2_cos_i_q[1][0] = Db2_cos_i_q[0][1];
-				Db2_cos_i_q[1][1] = dndxdotu*ddx0ddtheta_q/(Rref*Rref);
+				Db2_cos_i_q[1][1] = dndxdotu_cos_i_q*ddx0ddtheta_q/(pow(r_q[q_index],2.0));
 
-
-				dndxdotu = scaledn0proj*(cross_product(dx0dS_q,dUdtheta_sin_i_q) - cross_product(dx0dtheta_q,dUdS_sin_i_q));
+				Tensor<1,3> df_sin_i_q = (cross_product(dx0dS_q,dUdtheta_sin_i_q) - cross_product(dx0dtheta_q,dUdS_sin_i_q));
+				Tensor<1,3> dndxdotu_sin_i_q = scaledn0proj*df_sin_i_q;
 
 				Tensor<2,2> Db2_sin_i_q;
-				Db2_sin_i_q[0][0] = dndxdotu*ddx0ddS_q;
-				Db2_sin_i_q[0][1] = dndxdotu*ddx0dSdtheta_q/Rref;
+				Db2_sin_i_q[0][0] = dndxdotu_sin_i_q*ddx0ddS_q;
+				Db2_sin_i_q[0][1] = dndxdotu_sin_i_q*ddx0dSdtheta_q/r_q[q_index];
 				Db2_sin_i_q[1][0] = Db2_sin_i_q[0][1];
-				Db2_sin_i_q[1][1] = dndxdotu*ddx0ddtheta_q/(Rref*Rref);
+				Db2_sin_i_q[1][1] = dndxdotu_sin_i_q*ddx0ddtheta_q/(pow(r_q[q_index],2.0));
 
 				Tensor<2,2> Db_cos_i_q = Db1_cos_i_q + Db2_cos_i_q;
 				Tensor<2,2> Db_sin_i_q = Db1_sin_i_q + Db2_sin_i_q;
@@ -732,51 +750,86 @@ void ElasticProblem::assemble_system()
 					Da_sin_j_q[1][1] = 2.0*dx0dtheta_q*dUdtheta_sin_j_q/(Rref*Rref);
 
 
+					Tensor<2,2> DDa_cos_q;
+					DDa_cos_q[0][0] = dUdS_cos_i_q*dUdS_cos_j_q;
+					DDa_cos_q[0][1] = (dUdS_cos_i_q*dUdtheta_cos_j_q + dUdS_cos_j_q*dUdtheta_cos_i_q)/(2.0*Rref);
+					DDa_cos_q[1][0] = DDa_cos_q[0][1];
+					DDa_cos_q[1][1] = (dUdtheta_cos_i_q*dUdtheta_cos_j_q)/(2.0*Rref*Rref);
+
+					Tensor<2,2> DDa_sin_q;
+					DDa_sin_q[0][0] = dUdS_sin_i_q*dUdS_sin_j_q;
+					DDa_sin_q[0][1] = (dUdS_sin_i_q*dUdtheta_sin_j_q + dUdS_sin_j_q*dUdtheta_sin_i_q)/(2.0*Rref);
+					DDa_sin_q[1][0] = DDa_sin_q[0][1];
+					DDa_sin_q[1][1] = (dUdtheta_sin_i_q*dUdtheta_sin_j_q)/(2.0*Rref*Rref);
 
 					Tensor<2,2> Db1_cos_j_q;
 					Db1_cos_j_q[0][0] = n0_q*ddUddS_cos_j_q;
-					Db1_cos_j_q[0][1] = n0_q*ddUdSdtheta_cos_j_q/(Rref);
+					Db1_cos_j_q[0][1] = n0_q*ddUdSdtheta_cos_j_q/r_q[q_index];
 					Db1_cos_j_q[1][0] = Db1_cos_j_q[0][1];
-					Db1_cos_j_q[1][1] = n0_q*ddUddtheta_cos_j_q/(Rref*Rref);
+					Db1_cos_j_q[1][1] = n0_q*ddUddtheta_cos_j_q/(pow(r_q[q_index],2.0));
 
 					Tensor<2,2> Db1_sin_j_q;
 					Db1_sin_j_q[0][0] = n0_q*ddUddS_sin_j_q;
-					Db1_sin_j_q[0][1] = n0_q*ddUdSdtheta_sin_j_q/(Rref);
+					Db1_sin_j_q[0][1] = n0_q*ddUdSdtheta_sin_j_q/r_q[q_index];
 					Db1_sin_j_q[1][0] = Db1_sin_j_q[0][1];
-					Db1_sin_j_q[1][1] = n0_q*ddUddtheta_sin_j_q/(Rref*Rref);
+					Db1_sin_j_q[1][1] = n0_q*ddUddtheta_sin_j_q/(pow(r_q[q_index],2.0));
 
+					Tensor<1,3> df_cos_j_q = (cross_product(dx0dS_q,dUdtheta_cos_j_q) - cross_product(dx0dtheta_q,dUdS_cos_j_q));
 
-					Tensor<2,3> scaledn0proj;
-					scaledn0proj = (Iden3D - outer_product(n0_q,n0_q))/(cross_product(dx0dS_q,dx0dtheta_q).norm());
-
-					Tensor<1,3> dndxdotu;
-					dndxdotu = scaledn0proj*(cross_product(dx0dS_q,dUdtheta_cos_j_q) - cross_product(dx0dtheta_q,dUdS_cos_j_q));
+					Tensor<1,3> dndxdotu_cos_j_q = scaledn0proj*df_cos_j_q;
 
 					Tensor<2,2> Db2_cos_j_q;
-					Db2_cos_j_q[0][0] = dndxdotu*ddx0ddS_q;
-					Db2_cos_j_q[0][1] = dndxdotu*ddx0dSdtheta_q/Rref;
+					Db2_cos_j_q[0][0] = dndxdotu_cos_j_q*ddx0ddS_q;
+					Db2_cos_j_q[0][1] = dndxdotu_cos_j_q*ddx0dSdtheta_q/r_q[q_index];
 					Db2_cos_j_q[1][0] = Db2_cos_j_q[0][1];
-					Db2_cos_j_q[1][1] = dndxdotu*ddx0ddtheta_q/(Rref*Rref);
+					Db2_cos_j_q[1][1] = dndxdotu_cos_j_q*ddx0ddtheta_q/(pow(r_q[q_index],2.0));
 
-
-					dndxdotu = scaledn0proj*(cross_product(dx0dS_q,dUdtheta_sin_j_q) - cross_product(dx0dtheta_q,dUdS_sin_j_q));
+					Tensor<1,3> df_sin_j_q = (cross_product(dx0dS_q,dUdtheta_sin_j_q) - cross_product(dx0dtheta_q,dUdS_sin_j_q));
+					Tensor<1,3> dndxdotu_sin_j_q = scaledn0proj*(cross_product(dx0dS_q,dUdtheta_sin_j_q) - cross_product(dx0dtheta_q,dUdS_sin_j_q));
 
 					Tensor<2,2> Db2_sin_j_q;
-					Db2_sin_j_q[0][0] = dndxdotu*ddx0ddS_q;
-					Db2_sin_j_q[0][1] = dndxdotu*ddx0dSdtheta_q/Rref;
+					Db2_sin_j_q[0][0] = dndxdotu_sin_j_q*ddx0ddS_q;
+					Db2_sin_j_q[0][1] = dndxdotu_sin_j_q*ddx0dSdtheta_q/r_q[q_index];
 					Db2_sin_j_q[1][0] = Db2_sin_j_q[0][1];
-					Db2_sin_j_q[1][1] = dndxdotu*ddx0ddtheta_q/(Rref*Rref);
+					Db2_sin_j_q[1][1] = dndxdotu_sin_j_q*ddx0ddtheta_q/(pow(r_q[q_index],2.0));
 
 					Tensor<2,2> Db_cos_j_q = Db1_cos_j_q + Db2_cos_j_q;
 					Tensor<2,2> Db_sin_j_q = Db1_sin_j_q + Db2_sin_j_q;
+
+					Tensor<1,3> DDf_cos_q = cross_product(dUdS_cos_i_q,dUdtheta_cos_j_q) + cross_product(dUdS_cos_j_q,dUdtheta_cos_i_q);
+					Tensor<1,3> DDn_cos_q =  -1.0*(n0_q*df_cos_j_q)*dndxdotu_cos_i_q/fnorm_q
+							- 1.0*((outer_product(dndxdotu_cos_j_q,n0_q) + outer_product(n0_q,dndxdotu_cos_j_q))*df_cos_i_q)/fnorm_q
+							+ scaledn0proj*DDf_cos_q;
+
+					Tensor<1,3> DDf_sin_q = cross_product(dUdS_sin_i_q,dUdtheta_sin_j_q) + cross_product(dUdS_sin_j_q,dUdtheta_sin_i_q);
+					Tensor<1,3> DDn_sin_q =  -1.0*(n0_q*df_sin_j_q)*dndxdotu_sin_i_q/fnorm_q
+							- 1.0*((outer_product(dndxdotu_sin_j_q,n0_q) + outer_product(n0_q,dndxdotu_sin_j_q))*df_sin_i_q)/fnorm_q
+							+ scaledn0proj*DDf_sin_q;
+
+					Tensor<2,2> DDb_cos_q;
+					DDb_cos_q[0][0] = DDn_cos_q*ddx0ddS_q + dndxdotu_cos_i_q*ddUddS_cos_j_q + dndxdotu_cos_j_q*ddUddS_cos_i_q;
+					DDb_cos_q[0][1] = (DDn_cos_q*ddx0dSdtheta_q + dndxdotu_cos_i_q*ddUdSdtheta_cos_j_q + dndxdotu_cos_j_q*ddUdSdtheta_cos_i_q)/r_q[q_index];
+					DDb_cos_q[1][0] = DDb_cos_q[0][1];
+					DDb_cos_q[1][1] = (DDn_cos_q*ddx0ddtheta_q + dndxdotu_cos_i_q*ddUddtheta_cos_j_q + dndxdotu_cos_j_q*ddUddtheta_cos_i_q)/(pow(r_q[q_index],2.0));
+
+					Tensor<2,2> DDb_sin_q;
+					DDb_sin_q[0][0] = DDn_sin_q*ddx0ddS_q + dndxdotu_sin_i_q*ddUddS_sin_j_q + dndxdotu_sin_j_q*ddUddS_sin_i_q;
+					DDb_sin_q[0][1] = (DDn_sin_q*ddx0dSdtheta_q + dndxdotu_sin_i_q*ddUdSdtheta_sin_j_q + dndxdotu_sin_j_q*ddUdSdtheta_sin_i_q)/r_q[q_index];
+					DDb_sin_q[1][0] = DDb_sin_q[0][1];
+					DDb_sin_q[1][1] = (DDn_sin_q*ddx0ddtheta_q + dndxdotu_sin_i_q*ddUddtheta_sin_j_q + dndxdotu_sin_j_q*ddUddtheta_sin_i_q)/(pow(r_q[q_index],2.0));
+
 					//
 
 					cell_matrix(i,j) += 2.0*pi*Rref*(BilinearProduct(Da_cos_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_cos_j_q))*fe_values.JxW(q_index);
 					cell_matrix(i,j) += 2.0*pi*Rref*(BilinearProduct(Da_sin_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_sin_j_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += 2.0*pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_cos_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += 2.0*pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_sin_q))*fe_values.JxW(q_index);
+
 
 					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(BilinearProduct(Db_cos_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_cos_j_q))*fe_values.JxW(q_index);
 					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(BilinearProduct(Db_sin_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_sin_j_q))*fe_values.JxW(q_index);
-
+					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_cos_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_sin_q))*fe_values.JxW(q_index);
 
 
 				}
@@ -1352,6 +1405,57 @@ void ElasticProblem::construct_reduced_mappings(){
 
 }
 
+
+
+void ElasticProblem::update_internal_metrics(){
+
+	QGauss<DIM> quadrature_formula(fe.degree + quadegadd);
+
+	// We wanted to have a non-constant right hand side, so we use an object of
+	// the class declared above to generate the necessary data. Since this right
+	// hand side object is only used locally in the present function, we declare
+	// it here as a local variable:
+
+	// Compared to the previous example, in order to evaluate the non-constant
+	// right hand side function we now also need the quadrature points on the
+	// cell we are presently on (previously, we only required values and
+	// gradients of the shape function from the FEValues object, as well as the
+	// quadrature weights, FEValues::JxW() ). We can tell the FEValues object to
+	// do for us by also giving it the #update_quadrature_points flag:
+	FEValues<DIM> fe_values(fe,
+			quadrature_formula,
+			update_values | update_gradients |
+			update_quadrature_points | update_JxW_values);
+
+	// We then again define the same abbreviation as in the previous program.
+	// The value of this variable of course depends on the dimension which we
+	// are presently using, but the FiniteElement class does all the necessary
+	// work for you and you don't have to care about the dimension dependent
+	// parts:
+	const unsigned int dofs_per_cell = fe.dofs_per_cell;
+	const unsigned int n_q_points    = quadrature_formula.size();
+
+
+
+	std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+
+
+	for (const auto &cell : dof_handler.active_cell_iterators())
+	{
+		fe_values.reinit(cell);
+		unsigned int cell_index = cell->active_cell_index();
+
+		for (const unsigned int q_index : fe_values.quadrature_point_indices()){
+			const auto &x_q = fe_values.quadrature_point(q_index);
+			inplane_a.set_value(cell_index, q_index, current_inplane_a);
+			bending_a.set_value(cell_index,q_index,current_bending_a);
+		}
+
+
+	}
+}
+
+
 void ElasticProblem::calc_MMult(Eigen::MatrixXd * Kxout, const Eigen::MatrixXd * Kxxi, const Eigen::MatrixXd * XiR){
 	*Kxout = (*Kxxi)*(*XiR);
 }
@@ -1368,7 +1472,7 @@ Vector<double> ElasticProblem::calculate_stability(){
 	Vector<double> evalsout(10);
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 10000000.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1000.0*h, tol, eigenvalues, eigenvectors);
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		//std::cout << eigenvalues[i] << std::endl;
 	}
@@ -1600,6 +1704,7 @@ void ElasticProblem::load_state(unsigned int indx){
 	std::ifstream sol_in_u(sol_file_name.c_str());
 	boost::archive::text_iarchive sol_ar_u(sol_in_u);
 	x0solution.load(sol_ar_u,1);
+
 
 }
 

@@ -12,6 +12,7 @@ plt.ylabel('z')
 paramsf = open("build/params.dat")
 params = np.loadtxt(paramsf,delimiter=",");
 Nsteps = int(params[2])
+print(str(Nsteps))
 linecolor = "blue"
 ax1.axvline(0, linewidth = 0.8)
 plotlays, plotcols = [2], [linecolor,linecolor]

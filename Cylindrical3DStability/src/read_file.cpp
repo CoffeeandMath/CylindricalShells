@@ -56,6 +56,24 @@ void read_file::readInputFile(char *filename, some_data &dat) {
 			goto fileClose;
 		}
 
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.bending00));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.bending01));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.bending11));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
 
 		fileClose: {
 			fclose(fid);

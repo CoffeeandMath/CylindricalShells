@@ -45,7 +45,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.02;
+	h = 0.005;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -57,7 +57,7 @@ void ElasticProblem::solve_path(){
 	double defmagmax = 0.6*pi;
 	int Nmax = 200;
 	N2max = 800;
-	exportdata("params.dat");
+
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
 
 	int cntr = 0;
@@ -73,7 +73,7 @@ void ElasticProblem::solve_path(){
 	homog = 0.0000;
 	dhomog = 0.0000;
 	double defmag2min = 0.0;
-	double defmag2max = 2.0*pi;
+	double defmag2max = 2.5*pi;
 
 	std::vector<double> defmag2vec = linspace(defmag2min,defmag2max,N2max);
 
@@ -94,8 +94,8 @@ void ElasticProblem::solve_path(){
 	vector_to_csv(xi_global_to_reduced, "xi_global_to_reduced.csv");
 	vector_to_csv(xi_reduced_to_global, "xi_reduced_to_global.csv");
 
-	std::vector<Vector<double>> evalsall(2*N2max);
-
+	std::vector<Vector<double>> evalsall(N2max);
+	bending_dir[0][0] = -1.0;
 
 	for (double defmag2temp : defmag2vec){
 		cntr++;
@@ -120,7 +120,7 @@ void ElasticProblem::solve_path(){
 		save_current_state(cntr, (cntr==1));
 	}
 
-
+	/*
 
 	double defmag3start = defmag2max;
 	double defmag3end = defmag2min;
@@ -149,15 +149,8 @@ void ElasticProblem::solve_path(){
 		output_data_csv_iterative("solutions",cntr);
 		save_current_state(cntr, (cntr==1));
 	}
-
-
-
-	vector_to_csv(x_global_to_reduced, "x_global_to_reduced.csv");
-	vector_to_csv(x_reduced_to_global, "x_reduced_to_global.csv");
-	vector_to_csv(xi_global_to_reduced, "xi_global_to_reduced.csv");
-	vector_to_csv(xi_reduced_to_global, "xi_reduced_to_global.csv");
-	sparse_matrix_to_csv(system_matrix,"spout.csv");
-	sparse_matrix_to_csv(constraint_matrix,"spconstraint.csv");
+	 */
+	exportdata("params.dat");
 
 
 }
@@ -168,8 +161,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																													<< std::endl << "   Total number of cells: "
-																																													<< triangulation.n_cells() << std::endl;
+																																																	<< std::endl << "   Total number of cells: "
+																																																	<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -284,14 +277,9 @@ void ElasticProblem::update_internal_metrics(){
 			Tensor<2,2> epsilontemp;
 			Tensor<2,2> btemp;
 			double Rval = Reference_Configuration_Vec[cell_index][q_index].get_R();
-			epsilontemp[0][0] = 0.0*0.5*defmag2;
-			epsilontemp[1][1] = -0.0*defmag2;
-			btemp[0][0] = -defmag2;
-			btemp[1][1] = -0.0*defmag2;
 
-
-			epsilon_a[cell_index][q_index] = epsilontemp;
-			b_a[cell_index][q_index] = btemp;
+			inplane_a.set_value(cell_index, q_index, defmag2*inplane_dir);
+			bending_a.set_value(cell_index,q_index, defmag2*bending_dir);
 		}
 
 
@@ -314,9 +302,12 @@ void ElasticProblem::setup_system()
 	b_a.resize(triangulation.n_active_cells());
 	fr.resize(triangulation.n_active_cells());
 	fz.resize(triangulation.n_active_cells());
-	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																				<< std::endl;
+	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()<< std::endl;
 
+
+	QGauss<DIM> quadrature_formula(fe.degree + quadegadd);
+	inplane_a.resize(triangulation.n_active_cells(), quadrature_formula.size());
+	bending_a.resize(triangulation.n_active_cells(), quadrature_formula.size());
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
 	DoFTools::make_sparsity_pattern(dof_handler,
@@ -531,17 +522,16 @@ void ElasticProblem::assemble_system()
 			const auto &x_q = fe_values.quadrature_point(q_index);
 
 			CovariantMetric[0][0] = 0.5*(pow(dr_q[q_index][0],2.0) + pow(dz_q[q_index][0],2.0) - 1.0 );
-			//CovariantMetric[1][1] = 0.5*(1.0 - pow(R_ref_q/r_q[q_index],2.0));
 			CovariantMetric[1][1] = 0.5*(pow(r_q[q_index]/R_ref_q,2.0) - 1.0);
 			const double stretch_q = sqrt(pow(dr_q[q_index][0],2.0) + pow(dz_q[q_index][0],2.0));
 
 			Covariant2Form[0][0] = (dr_q[q_index][0]*dxi_z_q[q_index][0] - dxi_r_q[q_index][0]*dz_q[q_index][0])/stretch_q;
 			Covariant2Form[1][1] = dz_q[q_index][0]/(r_q[q_index]*stretch_q);
 
-			Tensor<2,2> InPlane = CovariantMetric  - 0.0*epsilon_a[cell_index][q_index];
-			Tensor<2,2> Bending = Covariant2Form - Reference_Configuration_Vec[cell_index][q_index].get_Covariant_2Form() - b_a[cell_index][q_index];
+			Tensor<2,2> InPlane = CovariantMetric  - inplane_a.get_value(cell_index, q_index);
+			Tensor<2,2> Bending = Covariant2Form - Reference_Configuration_Vec[cell_index][q_index].get_Covariant_2Form() - bending_a.get_value(cell_index, q_index);
 
-			Material_Vector_InPlane[cell_index].set_Params(1000.0*Emodv, nu, InPlane);
+			Material_Vector_InPlane[cell_index].set_Params(Emodv, nu, InPlane);
 			Material_Vector_Bending[cell_index].set_Params(Emodv, nu, Bending);
 
 
@@ -1196,6 +1186,9 @@ void ElasticProblem::exportdata(std::string outname){
 	rfile << N2max << '\n';
 	rfile << nu << '\n';
 	rfile << defmag2 << '\n';
+	rfile << bending_dir[0][0] << '\n';
+	rfile << bending_dir[0][1] << '\n';
+	rfile << bending_dir[1][1] << '\n';
 	rfile.close();
 }
 
@@ -1451,7 +1444,7 @@ Vector<double> ElasticProblem::calculate_stability(){
 
 	double tol = 1.0e-10;
 	Vector<double> evalsout(10);
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 100.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1.0*h, tol, eigenvalues, eigenvectors);
 
 	for (unsigned int i = 0; i < 10; i++){
 		std::cout << eigenvalues[i] << std::endl;
@@ -1590,6 +1583,28 @@ void ElasticProblem::output_results() const
 
 void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 
+
+	std::vector<Point<DIM>> support_points(dof_handler.n_dofs());
+	MappingQ1<DIM> mapping;
+	DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
+	std::vector<bool> r_components = {true,false,false,false,false,false};
+	ComponentMask r_mask(r_components);
+
+	std::vector<bool> is_r_comp(dof_handler.n_dofs(), false);
+	DoFTools::extract_dofs(dof_handler, r_mask, is_r_comp);
+
+	std::vector<bool> z_components = {false,true,false,false,false,false};
+	ComponentMask z_mask(z_components);
+
+	std::vector<bool> is_z_comp(dof_handler.n_dofs(), false);
+	DoFTools::extract_dofs(dof_handler, z_mask, is_z_comp);
+
+	std::vector<bool> lr_components = {false,false,true,false,false,false};
+	ComponentMask lr_mask(lr_components);
+
+	std::vector<bool> is_lr_comp(dof_handler.n_dofs(), false);
+	DoFTools::extract_dofs(dof_handler, lr_mask, is_lr_comp);
+
 	if (firstTime==true){
 		std::string dof_file_name = "de/dof_handler.dofdat";
 		std::ofstream dof_out_u(dof_file_name);
@@ -1601,31 +1616,8 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 		boost::archive::text_oarchive triang_ar_u(triang_out_u);
 		triangulation.save(triang_ar_u,1);
 
-
-
-
 		Vector<double> R0vec;
 		R0vec.reinit(solution.size());
-		std::vector<Point<DIM>> support_points(dof_handler.n_dofs());
-		MappingQ1<DIM> mapping;
-		DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
-		std::vector<bool> r_components = {true,false,false,false,false,false};
-		ComponentMask r_mask(r_components);
-
-		std::vector<bool> is_r_comp(dof_handler.n_dofs(), false);
-		DoFTools::extract_dofs(dof_handler, r_mask, is_r_comp);
-
-		std::vector<bool> z_components = {false,true,false,false,false,false};
-		ComponentMask z_mask(z_components);
-
-		std::vector<bool> is_z_comp(dof_handler.n_dofs(), false);
-		DoFTools::extract_dofs(dof_handler, z_mask, is_z_comp);
-
-		std::vector<bool> lr_components = {false,false,true,false,false,false};
-		ComponentMask lr_mask(lr_components);
-
-		std::vector<bool> is_lr_comp(dof_handler.n_dofs(), false);
-		DoFTools::extract_dofs(dof_handler, lr_mask, is_lr_comp);
 
 
 		for (unsigned int i = 0; i < R0vec.size(); i++){
@@ -1657,6 +1649,7 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 
 		}
 
+
 		std::string R0_file_name = "de/R0.soldat";
 		std::ofstream R0_out_u(R0_file_name);
 		boost::archive::text_oarchive R0_ar_u(R0_out_u);
@@ -1664,10 +1657,14 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 
 	}
 
+
 	std::string sol_file_name = "de/solution_" + std::to_string(indx) + ".soldat";
 	std::ofstream sol_out_u(sol_file_name);
 	boost::archive::text_oarchive sol_ar_u(sol_out_u);
 	solution.save(sol_ar_u,1);
+
+
+
 }
 
 

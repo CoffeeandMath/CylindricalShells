@@ -42,6 +42,7 @@
 
 #include <deal.II/lac/lapack_full_matrix.h>
 #include "read_file.h"
+#include "internalvariable.h"
 
 
 
@@ -71,6 +72,7 @@ private:
 	std::vector<bool> create_bool_vector(int,int);
 	std::vector<double> linspace(double, double, int);
 	void initialize_reference_config();
+	void update_internal_metrics();
 	void assemble_system();
 	void assemble_constraint_system();
 	void construct_reduced_mappings();
@@ -116,6 +118,11 @@ private:
 	std::vector<Material_Class> Material_Vector_InPlane;
 	std::vector<Material_Class> Material_Vector_Bending;
 
+	internal_variable<Tensor<2,2>> inplane_a;
+	internal_variable<Tensor<2,2>> bending_a;
+	Tensor<2,2> current_inplane_a;
+	Tensor<2,2> current_bending_a;
+
 
 	int quadegadd = 1;
 	int refinelevel = 7;
@@ -131,6 +138,9 @@ private:
 	unsigned int nxdofs = 0;
 	unsigned int nxidofs = 0;
 	int timestep = 0;
+
+	double defstep = 0.0;
+
 	Eigen::MatrixXd XiProj;
 	Eigen::MatrixXd XiProjtrans;
 	Eigen::MatrixXd Ktilde;
