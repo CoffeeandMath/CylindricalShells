@@ -76,7 +76,7 @@ private:
 	void assemble_system();
 	void assemble_constraint_system();
 	void construct_reduced_mappings();
-	Vector<double> calculate_stability();
+	Vector<double> calculate_stability(int);
 	void save_stability(std::vector<std::vector<Vector<double>>>);
 	void solve_path();
 	static void calc_MMult(Eigen::MatrixXd *,const Eigen::MatrixXd *, const Eigen::MatrixXd *);
@@ -90,7 +90,7 @@ private:
 	Tensor<1,3> normalize(const Tensor<1,3> &);
 	double Tensor_Inner(const Tensor<2,2> &, const Tensor<2,2> &);
 	double BilinearProduct(const Tensor<2,2> &, const Tensor<4,2> &, const Tensor<2,2> &);
-
+	void savestate(Vector<double> &, int);
 	Triangulation<DIM> triangulation;
 	FESystem<DIM>          fe;
 	DoFHandler<DIM>    dof_handler;

@@ -81,7 +81,7 @@ void ElasticProblem::solve_path(){
 			assemble_system();
 
 			construct_reduced_mappings();
-			Evalsall[ts-1][i] = calculate_stability();
+			Evalsall[ts-1][i] = calculate_stability(ts);
 		}
 		save_stability(Evalsall);
 	}
@@ -96,8 +96,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(dat.refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																											<< std::endl << "   Total number of cells: "
-																																																																											<< triangulation.n_cells() << std::endl;
+																																																																																	<< std::endl << "   Total number of cells: "
+																																																																																	<< triangulation.n_cells() << std::endl;
 }
 
 
@@ -112,7 +112,7 @@ void ElasticProblem::setup_system()
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																																		<< std::endl;
+            																																																																																																								<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -1465,7 +1465,7 @@ void ElasticProblem::calc_MAdd(Eigen::MatrixXd * Kxout, const Eigen::MatrixXd * 
 void ElasticProblem::calc_Kx2(const Eigen::MatrixXd & Kxixi){
 	Kx2 = XiProjtrans*Kxixi*XiProj;
 }
-Vector<double> ElasticProblem::calculate_stability(){
+Vector<double> ElasticProblem::calculate_stability(int ts){
 	std::cout << "Fourier Mode " << (int) nval << std::endl;
 	Vector<double> eigenvalues;
 	FullMatrix<double> eigenvectors;
@@ -1473,6 +1473,7 @@ Vector<double> ElasticProblem::calculate_stability(){
 	double tol = 1.0e-10;
 
 	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1000.0*h, tol, eigenvalues, eigenvectors);
+	std::cout << "Em rows: " << eigenvectors.n_rows() << "Em cols: " <<eigenvectors.n_cols() << std::endl;
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		//std::cout << eigenvalues[i] << std::endl;
 	}
@@ -1481,9 +1482,121 @@ Vector<double> ElasticProblem::calculate_stability(){
 
 		evalsout[i] = eigenvalues[i];
 		std::cout << "Eigval: " << evalsout[i] << std::endl;
+		if (evalsout[i] < -1.e-7 ){
+			Vector<double> evout(eigenvectors.n_rows());
+			for (unsigned int j = 0; j < eigenvectors.n_rows(); j++){
+				evout[j] = eigenvectors[j][i];
+			}
+			savestate(evout,ts);
+		}
 	}
 
 	return evalsout;
+
+
+}
+
+
+void ElasticProblem::savestate(Vector<double> & vcomp, int index){
+	const int ndofs = dof_handler.n_dofs();
+
+
+	//Creating masks for degrees of freedom
+	////////////////////
+	std::vector<bool> vr_components = create_bool_vector(12,0);
+	ComponentMask vr_mask(vr_components);
+
+	std::vector<bool> is_vr_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, vr_mask, is_vr_comp);
+	////////////////////
+	std::vector<bool> vtheta_components = create_bool_vector(12,1);
+	ComponentMask vtheta_mask(vtheta_components);
+
+	std::vector<bool> is_vtheta_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, vtheta_mask, is_vtheta_comp);
+	/////////////////////////
+	std::vector<bool> vz_components = create_bool_vector(12,2);
+	ComponentMask vz_mask(vz_components);
+
+	std::vector<bool> is_vz_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, vz_mask, is_vz_comp);
+
+	////////////////
+	std::vector<bool> wr_components = create_bool_vector(12,3);
+	ComponentMask wr_mask(wr_components);
+
+	std::vector<bool> is_wr_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, wr_mask, is_wr_comp);
+	///////////////////
+	std::vector<bool> wtheta_components = create_bool_vector(12,4);
+	ComponentMask wtheta_mask(wtheta_components);
+
+	std::vector<bool> is_wtheta_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, wtheta_mask, is_wtheta_comp);
+	//////////////////
+	std::vector<bool> wz_components = create_bool_vector(12,5);
+	ComponentMask wz_mask(wz_components);
+
+	std::vector<bool> is_wz_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, wz_mask, is_wz_comp);
+
+
+
+
+
+	std::vector<Point<DIM>> support_points(ndofs);
+	MappingQ1<DIM> mapping;
+	DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
+
+
+	std::string strout = "_" + std::to_string(index) + ".csv";
+	std::ofstream vrfile;
+	vrfile.open("unstablemodes/vr" + strout);
+	vrfile << "S,val\n";
+
+	std::ofstream vthetafile;
+	vthetafile.open("unstablemodes/vtheta" + strout);
+	vthetafile << "S,val\n";
+	std::ofstream vzfile;
+	vzfile.open("unstablemodes/vz" + strout);
+	vzfile << "S,val\n";
+	std::ofstream wrfile;
+	wrfile.open("unstablemodes/wr" + strout);
+	wrfile << "S,val\n";
+	std::ofstream wthetafile;
+	wthetafile.open("unstablemodes/wtheta" + strout);
+	wthetafile << "S,val\n";
+	std::ofstream wzfile;
+	wzfile.open("unstablemodes/wz" + strout);
+	wzfile << "S,val\n";
+	for (int i = 0; i < vcomp.size(); i++){
+		int iglobal = x_reduced_to_global[i];
+		if (is_vr_comp[iglobal]) {
+			vrfile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		} else if (is_vtheta_comp[iglobal]){
+			vthetafile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		} else if (is_vz_comp[iglobal]){
+			vzfile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		} else if (is_wr_comp[iglobal]){
+			wrfile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		} else if (is_wtheta_comp[iglobal]){
+			wthetafile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		} else if (is_wz_comp[iglobal]){
+			wzfile << support_points[iglobal][0] << "," << vcomp[i] << '\n';
+		}
+
+	}
+
+	vrfile.close();
+	vthetafile.close();
+	vzfile.close();
+	wrfile.close();
+	wthetafile.close();
+	wzfile.close();
+
+
+
+
 
 
 }
