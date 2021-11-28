@@ -6,7 +6,7 @@ from numpy import random
 import pandas as pd
 
 
-index = 666
+index = 550
 
 vrdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vr_' + str(index) + '.csv')
 vrsorted = vrdata.sort_values('S')
@@ -29,28 +29,41 @@ wd = {'S':wrsorted['S'],'r':wrsorted['val'],'theta':wthetasorted['val'],'z':wzso
 wn = pd.DataFrame(data=wd)
 
 ntheta = 300
+xrdf = pd.read_csv('CylindricalSystem/build/solutions/r_values_' + str(index) + '.csv')
+xrdfsorted = xrdf.sort_values('S_values')
+xzdf = pd.read_csv('CylindricalSystem/build/solutions/z_values_' + str(index) + '.csv')
+xzdfsorted = xzdf.sort_values('S_values')
 th = np.linspace(0, np.pi*2, ntheta)
-xr = np.linspace(0.1,1.,vn['r'].size)
-xz = np.linspace(0.,0.,vn['r'].size)
+xr = xrdfsorted['r_values']
+xz = xzdfsorted['z_values']
 
-uxn = np.outer(vn['r'],np.multiply(np.cos(th),np.cos(th))) - np.outer(vn['theta'],np.multiply(np.sin(th),np.cos(th))) + np.outer(wn['r'],np.multiply(np.cos(th),np.sin(th))) - np.outer(wn['theta'],np.multiply(np.sin(th),np.sin(th)))
-uyn = np.outer(vn['r'],np.multiply(np.sin(th),np.cos(th))) + np.outer(vn['theta'],np.multiply(np.cos(th),np.cos(th))) + np.outer(wn['r'],np.multiply(np.sin(th),np.sin(th))) + np.outer(wn['theta'],np.multiply(np.cos(th),np.sin(th)))
-uzn = np.outer(vn['z'],np.cos(th)) + np.outer(wn['z'],np.sin(th))
+
+nf = 1.;
+uxn = np.outer(vn['r'],np.multiply(np.cos(th),np.cos(nf*th))) - np.outer(vn['theta'],np.multiply(np.sin(th),np.cos(nf*th))) + np.outer(wn['r'],np.multiply(np.cos(th),np.sin(nf*th))) - np.outer(wn['theta'],np.multiply(np.sin(th),np.sin(nf*th)))
+uyn = np.outer(vn['r'],np.multiply(np.sin(th),np.cos(nf*th))) + np.outer(vn['theta'],np.multiply(np.cos(th),np.cos(nf*th))) + np.outer(wn['r'],np.multiply(np.sin(th),np.sin(nf*th))) + np.outer(wn['theta'],np.multiply(np.cos(th),np.sin(nf*th)))
+uzn = np.outer(vn['z'],np.cos(nf*th)) + np.outer(wn['z'],np.sin(nf*th))
 
 defmag = 2.0
 xxn = np.outer(xr, np.cos(th)) + defmag*uxn
 xyn = np.outer(xr, np.sin(th)) + defmag*uyn
 xzn = np.outer(xz,np.linspace(1.,1.,th.size)) + defmag*uzn
 
-fig2, ax2 = plt.subplots(1,2)
-ax2[1] = fig2.add_subplot(122,projection='3d')
+x0xn = np.outer(xr, np.cos(th)) 
+x0yn = np.outer(xr, np.sin(th)) 
+x0zn = np.outer(xz,np.linspace(1.,1.,th.size))
+ax2 = [None]*2
+fig = plt.figure(figsize=plt.figaspect(0.5))
+ax2[0] = fig.add_subplot(121)
+ax2[1] = fig.add_subplot(122,projection='3d')
 ax2[0].plot(vn['S'],vn['r'],label='r')
 ax2[0].plot(vn['S'],vn['theta'],label = 'theta')
 ax2[0].plot(vn['S'],vn['z'], label = 'z')
 ax2[0].legend()
 
 ax2[1].plot_surface(xxn,xyn,xzn,linewidth=10, antialiased=True)
-ax2[1].set_xlim3d([-2,2])
-ax2[1].set_ylim3d([-2,2])
-ax2[1].set_zlim3d([-2,2])
+ax2[1].plot_wireframe(x0xn,x0yn,x0zn+1.)
+axlim = 1.5
+ax2[1].set_xlim3d([-axlim,axlim])
+ax2[1].set_ylim3d([-axlim,axlim])
+ax2[1].set_zlim3d([-axlim,axlim])
 plt.show()

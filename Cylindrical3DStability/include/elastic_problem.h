@@ -79,6 +79,7 @@ private:
 	Vector<double> calculate_stability(int);
 	void save_stability(std::vector<std::vector<Vector<double>>>);
 	void solve_path();
+	void load_external_params();
 	static void calc_MMult(Eigen::MatrixXd *,const Eigen::MatrixXd *, const Eigen::MatrixXd *);
 	static void calc_MAdd(Eigen::MatrixXd *,const Eigen::MatrixXd *, const Eigen::MatrixXd *,const double a, const double b);
 	void calc_Kx2(const Eigen::MatrixXd &);

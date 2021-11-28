@@ -94,25 +94,22 @@ void ElasticProblem::make_grid()
 
 	GridGenerator::hyper_cube(triangulation, 0.0, 1.0);
 	triangulation.refine_global(dat.refinelevel);
-
+	//triangulation.refine_global(7);
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																	<< std::endl << "   Total number of cells: "
-																																																																																	<< triangulation.n_cells() << std::endl;
+																																																																																			<< std::endl << "   Total number of cells: "
+																																																																																			<< triangulation.n_cells() << std::endl;
 }
 
 
 
 void ElasticProblem::setup_system()
 {
-	std::string str = "../../CylindricalSystem/build/params.dat";
-	char *cstr = new char[str.length() + 1];
-	strcpy(cstr, str.c_str());
-	rf.readInputFile(cstr, dat);
+
 	nu = dat.nu;
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																																								<< std::endl;
+            																																																																																																										<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -1838,11 +1835,19 @@ void ElasticProblem::writeToCSVfile(std::string name, Eigen::MatrixXd matrix)
 	}
 }
 
+void ElasticProblem::load_external_params(){
+	std::string str = "../../CylindricalSystem/build/params.dat";
+	char *cstr = new char[str.length() + 1];
+	strcpy(cstr, str.c_str());
+	rf.readInputFile(cstr, dat);
+}
+
 void ElasticProblem::run()
 {
 	std::cout << "Solving problem in " << DIM << " space dimensions."
 			<< std::endl;
 
+	load_external_params();
 	make_grid();
 	setup_system();
 	setup_constraints();

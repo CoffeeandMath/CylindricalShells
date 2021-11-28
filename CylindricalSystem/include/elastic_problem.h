@@ -112,7 +112,7 @@ private:
 	double z0 = 0.;
 	double r0 = .10;
 	double Smax = 1.0;
-	int refinelevel = 7;
+	int refinelevel = 5;
 
 
 	double Emodv = 1e-3;
