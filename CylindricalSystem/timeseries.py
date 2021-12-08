@@ -56,7 +56,7 @@ def animate(i):
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=integers(1,Nsteps), interval=1, blit=True)
+                               frames=integers(0,Nsteps-1), interval=1, blit=True)
 
 
 

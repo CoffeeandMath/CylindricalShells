@@ -45,7 +45,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.005;
+	h = 0.01;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -72,11 +72,16 @@ void ElasticProblem::solve_path(){
 	}
 	homog = 0.0000;
 	dhomog = 0.0000;
-	double defmag2min = 0.0;
-	double defmag2max = 2.5*pi;
+	double defmagbendingmin = 0.0;
+	double defmagbendingmax = 2.5*pi;
 
-	std::vector<double> defmag2vec = linspace(defmag2min,defmag2max,N2max);
+	std::vector<double> defmagbendingvec = linspace(defmagbendingmin,defmagbendingmax,N2max);
+	std::vector<double> defmaginplanevec = linspace(0.0,0.0*-0.1,N2max);
+	inplane_dir[0][0] = 1.0;
+	inplane_dir[1][1] = -0.3;
 
+	bending_dir[0][0] = -1.0;
+	bending_dir[1][1] = 0.0;
 	cntr = 0;
 	//fs::create_directory("solutions");
 	//fs::remove_all("stabilitymatrices");
@@ -84,7 +89,7 @@ void ElasticProblem::solve_path(){
 
 
 
-	vector_to_csv(defmag2vec, "forward_defmag.csv");
+	vector_to_csv(defmagbendingvec, "forward_defmag.csv");
 
 	assemble_constraint_system();
 	assemble_system();
@@ -95,11 +100,35 @@ void ElasticProblem::solve_path(){
 	vector_to_csv(xi_reduced_to_global, "xi_reduced_to_global.csv");
 
 	std::vector<Vector<double>> evalsall(N2max);
-	bending_dir[0][0] = -1.0;
 
-	for (double defmag2temp : defmag2vec){
+
+	for (unsigned int cnt = 0; cnt < N2max; cnt++){
+		defmaginplane = defmaginplanevec[cnt];
+		defmagbending = defmagbendingvec[cnt];
+		std::cout << defmagbending << std::endl;
+		initialize_reference_config();
+		update_internal_metrics();
+
+		std::cout << "Solve Iteration: " << cnt << "---------------------------" << std::endl;
+		newton_raphson();
+
+		if(StabilityCalcs){
+
+			assemble_constraint_system();
+			assemble_system();
+			construct_reduced_mappings();
+			output_stability_matrices(cnt);
+			evalsall[cnt] = calculate_stability();
+			save_eigenvalues(evalsall);
+		}
+		output_data_csv_iterative("solutions",cnt);
+		save_current_state(cnt, (cnt==0));
+
+	}
+	/*
+	for (double defmagbendingtemp : defmagbendingvec){
 		cntr++;
-		defmag2 = defmag2temp;
+		defmagbending = defmagbendingtemp;
 		initialize_reference_config();
 		update_internal_metrics();
 
@@ -119,6 +148,7 @@ void ElasticProblem::solve_path(){
 		output_data_csv_iterative("solutions",cntr);
 		save_current_state(cntr, (cntr==1));
 	}
+	 */
 
 	/*
 
@@ -161,8 +191,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																	<< std::endl << "   Total number of cells: "
-																																																	<< triangulation.n_cells() << std::endl;
+																																																			<< std::endl << "   Total number of cells: "
+																																																			<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -278,8 +308,8 @@ void ElasticProblem::update_internal_metrics(){
 			Tensor<2,2> btemp;
 			double Rval = Reference_Configuration_Vec[cell_index][q_index].get_R();
 
-			inplane_a.set_value(cell_index, q_index, defmag2*inplane_dir);
-			bending_a.set_value(cell_index,q_index, defmag2*bending_dir);
+			inplane_a.set_value(cell_index, q_index, defmaginplane*inplane_dir);
+			bending_a.set_value(cell_index,q_index, defmagbending*bending_dir);
 		}
 
 
@@ -1185,10 +1215,14 @@ void ElasticProblem::exportdata(std::string outname){
 	rfile << refinelevel << '\n';
 	rfile << N2max << '\n';
 	rfile << nu << '\n';
-	rfile << defmag2 << '\n';
+	rfile << defmagbending << '\n';
 	rfile << bending_dir[0][0] << '\n';
 	rfile << bending_dir[0][1] << '\n';
 	rfile << bending_dir[1][1] << '\n';
+	rfile << defmaginplane << '\n';
+	rfile << inplane_dir[0][0] << '\n';
+	rfile << inplane_dir[0][1] << '\n';
+	rfile << inplane_dir[1][1] << '\n';
 	rfile.close();
 }
 
@@ -1444,11 +1478,11 @@ Vector<double> ElasticProblem::calculate_stability(){
 
 	double tol = 1.0e-10;
 	Vector<double> evalsout(10);
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-1.0*Emodv, 1000.0*h*Emodv, tol, eigenvalues, eigenvectors);
 
 	for (unsigned int i = 0; i < 10; i++){
 		std::cout << eigenvalues[i] << std::endl;
-		evalsout[i] = eigenvalues[i];
+		evalsout[i] = eigenvalues[i]/Emodv;
 	}
 	//std::cout << "Smallest Eigenvalue : " << eigenvalues[0] << std::endl;
 

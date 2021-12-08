@@ -22,12 +22,16 @@ public:
 	int refinelevel = 5;
 	int Nsteps = 10;
 	double nu = 0.5;
-	double defmag = 0.0;
+	double bendingdefmag = 0.0;
+	double inplanedefmag = 0.0;
 	char FolderName[MAXLINE];
 	char FileName[MAXLINE];
 	double bending00 = 0.0;
 	double bending01 = 0.0;
 	double bending11 = 0.0;
+	double inplane00 = 0.0;
+	double inplane01 = 0.0;
+	double inplane11 = 0.0;
 
 };
 

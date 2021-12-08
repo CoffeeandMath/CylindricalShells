@@ -50,7 +50,7 @@ void read_file::readInputFile(char *filename, some_data &dat) {
 		}
 
 		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
-		valuesWritten = sscanf(nextLine, "%lg", &(dat.defmag));
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.bendingdefmag));
 		if (valuesWritten != 1) {
 			fileReadErrorFlag = true;
 			goto fileClose;
@@ -70,6 +70,32 @@ void read_file::readInputFile(char *filename, some_data &dat) {
 		}
 		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
 		valuesWritten = sscanf(nextLine, "%lg", &(dat.bending11));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.inplanedefmag));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.inplane00));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.inplane01));
+		if (valuesWritten != 1) {
+			fileReadErrorFlag = true;
+			goto fileClose;
+		}
+		getNextDataLine(fid, nextLine, MAXLINE, &endOfFileFlag);
+		valuesWritten = sscanf(nextLine, "%lg", &(dat.inplane11));
 		if (valuesWritten != 1) {
 			fileReadErrorFlag = true;
 			goto fileClose;

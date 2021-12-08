@@ -130,6 +130,7 @@ private:
 	double h = 0.02;
 	double nval = 1.0;
 	double nu = 0.3;
+	double Emodv = 1.0e3;
 
 	std::vector<int> x_global_to_reduced;
 	std::vector<int> xi_global_to_reduced;

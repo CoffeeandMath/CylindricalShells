@@ -115,12 +115,13 @@ private:
 	int refinelevel = 5;
 
 
-	double Emodv = 1e-3;
+	double Emodv = 1.0e-1;
 	double homog = 0.000;
 	double dhomog = 0.000;
 	double defmag = 0.0;
-	double defmag2 = 0.0;
-	double mu = 100.0;
+	double defmaginplane = 0.0;
+	double defmagbending = 0.0;
+	double mu = 100000.00 * Emodv;
 	double nu = 0.3;
 
 	std::vector<double> linspace(double, double, int);

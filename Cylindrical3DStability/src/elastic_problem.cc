@@ -37,16 +37,27 @@ void ElasticProblem::solve_path(){
 
 	h = dat.h;
 	int Ntsteps = dat.Nsteps;
-	double defmag = dat.defmag;
+	nu = dat.nu;
+	double bendingdefmag = dat.bendingdefmag;
+	std::cout << bendingdefmag << std::endl;
+	double inplanedefmag = dat.inplanedefmag;
+	std::cout << inplanedefmag << std::endl;
+	std::cout << "--------------------------------" << std::endl;
 	int Nmax = 5;
 	Tensor<2,2> bending_dir;
 	bending_dir[0][0] = dat.bending00;
 	bending_dir[0][1] = dat.bending01;
 	bending_dir[1][0] = dat.bending01;
 	bending_dir[1][1] = dat.bending11;
-	std::vector<double> nvec = linspace(1.0,(double)Nmax,Nmax);
-	std::vector<double> defmagvec = linspace(0.0,defmag,Ntsteps);
+	Tensor<2,2> inplane_dir;
+	inplane_dir[0][0] = dat.inplane00;
+	inplane_dir[0][1] = dat.inplane01;
+	inplane_dir[1][0] = dat.inplane01;
+	inplane_dir[1][1] = dat.inplane11;
 
+	std::vector<double> nvec = linspace(1.0,(double)Nmax,Nmax);
+	std::vector<double> bendingdefmagvec = linspace(0.0,bendingdefmag,Ntsteps);
+	std::vector<double> inplanedefmagvec = linspace(0.0,inplanedefmag,Ntsteps);
 
 	initialize_reference_config();
 	assemble_constraint_system();
@@ -65,15 +76,18 @@ void ElasticProblem::solve_path(){
 		}
 
 	}
-	for (unsigned int ts = 1; ts <= Ntsteps; ts++){
 
-		defstep = defmagvec[ts-1];
-		Evalsall[ts-1].resize(Nmax);
+	for (unsigned int ts = 0; ts < Ntsteps; ts++){
+
+		defstep = bendingdefmagvec[ts];
+		Evalsall[ts].resize(Nmax);
 		std::cout << "TimeStep: " << ts << std::endl;
 		timestep = ts;
 		load_state(timestep);
 
-		current_bending_a = defstep * bending_dir;
+		//current_bending_a = defstep * bending_dir;
+		current_bending_a = bendingdefmagvec[ts]*bending_dir;
+		current_inplane_a = inplanedefmagvec[ts]*inplane_dir;
 		for (unsigned int i = 0; i < Nmax; i++){
 			nval = nvec[i];
 			update_internal_metrics();
@@ -81,7 +95,7 @@ void ElasticProblem::solve_path(){
 			assemble_system();
 
 			construct_reduced_mappings();
-			Evalsall[ts-1][i] = calculate_stability(ts);
+			Evalsall[ts][i] = calculate_stability(ts);
 		}
 		save_stability(Evalsall);
 	}
@@ -105,7 +119,7 @@ void ElasticProblem::make_grid()
 void ElasticProblem::setup_system()
 {
 
-	nu = dat.nu;
+
 	dof_handler.distribute_dofs(fe);
 	solution.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
@@ -524,8 +538,8 @@ void ElasticProblem::assemble_system()
 			Tensor<2,2> Bending = Covariant2Form - Reference2Form - bending_a.get_value(cell_index, q_index);
 
 
-			Material_Vector_InPlane[cell_index].set_Params(1.0, 0.0, InPlane);
-			Material_Vector_Bending[cell_index].set_Params(1.0, 0.0, Bending);
+			Material_Vector_InPlane[cell_index].set_Params(Emodv,nu, InPlane);
+			Material_Vector_Bending[cell_index].set_Params(Emodv, nu, Bending);
 
 
 
@@ -817,16 +831,16 @@ void ElasticProblem::assemble_system()
 
 					//
 
-					cell_matrix(i,j) += 2.0*pi*Rref*(BilinearProduct(Da_cos_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_cos_j_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*(BilinearProduct(Da_sin_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_sin_j_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_cos_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_sin_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*(BilinearProduct(Da_cos_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_cos_j_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*(BilinearProduct(Da_sin_i_q,Material_Vector_InPlane[cell_index].getddQ2ddF(),Da_sin_j_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_cos_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*(Tensor_Inner(Material_Vector_InPlane[cell_index].getdQ2dF(),DDa_sin_q))*fe_values.JxW(q_index);
 
 
-					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(BilinearProduct(Db_cos_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_cos_j_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(BilinearProduct(Db_sin_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_sin_j_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_cos_q))*fe_values.JxW(q_index);
-					cell_matrix(i,j) += 2.0*pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_sin_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*hsc*(BilinearProduct(Db_cos_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_cos_j_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*hsc*(BilinearProduct(Db_sin_i_q,Material_Vector_Bending[cell_index].getddQ2ddF(),Db_sin_j_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_cos_q))*fe_values.JxW(q_index);
+					cell_matrix(i,j) += pi*Rref*hsc*(Tensor_Inner(Material_Vector_Bending[cell_index].getdQ2dF(),DDb_sin_q))*fe_values.JxW(q_index);
 
 
 				}
@@ -1469,7 +1483,7 @@ Vector<double> ElasticProblem::calculate_stability(int ts){
 	Vector<double> evalsout(10);
 	double tol = 1.0e-10;
 
-	KtildeLA.compute_eigenvalues_symmetric(-1.0, 1000.0*h, tol, eigenvalues, eigenvectors);
+	KtildeLA.compute_eigenvalues_symmetric(-Emodv*1.0, Emodv*1000.0*h, tol, eigenvalues, eigenvectors);
 	std::cout << "Em rows: " << eigenvectors.n_rows() << "Em cols: " <<eigenvectors.n_cols() << std::endl;
 	for (unsigned int i = 0; i < eigenvalues.size(); i++){
 		//std::cout << eigenvalues[i] << std::endl;
@@ -1482,7 +1496,7 @@ Vector<double> ElasticProblem::calculate_stability(int ts){
 		if (evalsout[i] < -1.e-7 ){
 			Vector<double> evout(eigenvectors.n_rows());
 			for (unsigned int j = 0; j < eigenvectors.n_rows(); j++){
-				evout[j] = eigenvectors[j][i];
+				evout[j] = eigenvectors[j][i]/Emodv;
 			}
 			savestate(evout,ts);
 		}
@@ -1782,7 +1796,7 @@ void ElasticProblem::initialize_reference_config(){
 
 // Commented out because this is causing the compiler error with fesystem
 void ElasticProblem::load_state(unsigned int indx){
-	if (indx==1){
+	if (indx==0){
 
 
 		std::string triang_file_name = "../../CylindricalSystem/build/de/triang.tridat";
