@@ -13,7 +13,7 @@ normalized = 1
 def nanv(v):
 	vout = [None]*len(v)
 	for i in range(len(v)):
-		if np.fabs(v[i]) > 1.e-10:
+		if np.fabs(v[i]) > 1.e-9:
 			vout[i] = v[i]
 		else:
 			vout[i] = np.nan
@@ -75,11 +75,11 @@ for i in range(nevals+1):
 	ax2[i].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 
 refinelevel = 5.
-axsc = 1000.*pow(2.,-1.*refinelevel)
-ax2[0].set_ylim([axsc*-1.e-5,axsc*1.e-3])
-ax2[1].set_ylim([axsc*-1.e-3,axsc*4.e-3])
+axsc = 100.*pow(2.,-1.*refinelevel)
+ax2[0].set_ylim([axsc*-1.e-5,axsc*5.e-4])
+ax2[1].set_ylim([axsc*-2.e-3,axsc*1.e-2])
 ax2[2].set_ylim([axsc*-5.e-2,axsc*2.e-1])
-ax2[3].set_ylim([axsc*-5.e-1,axsc*2.5e-1])
+ax2[3].set_ylim([axsc*-5.e-1,axsc*2.5e0])
 ax2[4].set_ylim([axsc*-5.e-1,axsc*4.e-0])
 ax2[5].set_ylim([axsc*-5.e-0,axsc* 5.e1])
 fig2.suptitle("Fourier Mode Stability")

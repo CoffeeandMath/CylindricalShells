@@ -6,7 +6,7 @@ from numpy import random
 import pandas as pd
 
 
-index = 550
+index = 10
 
 vrdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vr_' + str(index) + '.csv')
 vrsorted = vrdata.sort_values('S')
@@ -43,7 +43,7 @@ uxn = np.outer(vn['r'],np.multiply(np.cos(th),np.cos(nf*th))) - np.outer(vn['the
 uyn = np.outer(vn['r'],np.multiply(np.sin(th),np.cos(nf*th))) + np.outer(vn['theta'],np.multiply(np.cos(th),np.cos(nf*th))) + np.outer(wn['r'],np.multiply(np.sin(th),np.sin(nf*th))) + np.outer(wn['theta'],np.multiply(np.cos(th),np.sin(nf*th)))
 uzn = np.outer(vn['z'],np.cos(nf*th)) + np.outer(wn['z'],np.sin(nf*th))
 
-defmag = 2.0
+defmag = 2000.0
 xxn = np.outer(xr, np.cos(th)) + defmag*uxn
 xyn = np.outer(xr, np.sin(th)) + defmag*uyn
 xzn = np.outer(xz,np.linspace(1.,1.,th.size)) + defmag*uzn

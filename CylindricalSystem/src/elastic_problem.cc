@@ -45,7 +45,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.01;
+	h = 0.02;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -73,7 +73,7 @@ void ElasticProblem::solve_path(){
 	homog = 0.0000;
 	dhomog = 0.0000;
 	double defmagbendingmin = 0.0;
-	double defmagbendingmax = 2.5*pi;
+	double defmagbendingmax = 1.5*pi;
 
 	std::vector<double> defmagbendingvec = linspace(defmagbendingmin,defmagbendingmax,N2max);
 	std::vector<double> defmaginplanevec = linspace(0.0,0.0*-0.1,N2max);
