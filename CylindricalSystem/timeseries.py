@@ -60,7 +60,7 @@ anim = animation.FuncAnimation(fig, animate, init_func=init,
 
 
 
-#anim.save('animation.mp4', fps=80, dpi = 200)
+anim.save('animation.mp4', fps=80, dpi = 200)
 plt.show()
 
 

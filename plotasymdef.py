@@ -6,7 +6,7 @@ from numpy import random
 import pandas as pd
 
 
-index = 10
+index = 550
 
 vrdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vr_' + str(index) + '.csv')
 vrsorted = vrdata.sort_values('S')
@@ -43,7 +43,7 @@ uxn = np.outer(vn['r'],np.multiply(np.cos(th),np.cos(nf*th))) - np.outer(vn['the
 uyn = np.outer(vn['r'],np.multiply(np.sin(th),np.cos(nf*th))) + np.outer(vn['theta'],np.multiply(np.cos(th),np.cos(nf*th))) + np.outer(wn['r'],np.multiply(np.sin(th),np.sin(nf*th))) + np.outer(wn['theta'],np.multiply(np.cos(th),np.sin(nf*th)))
 uzn = np.outer(vn['z'],np.cos(nf*th)) + np.outer(wn['z'],np.sin(nf*th))
 
-defmag = 2000.0
+defmag = 3000.0
 xxn = np.outer(xr, np.cos(th)) + defmag*uxn
 xyn = np.outer(xr, np.sin(th)) + defmag*uyn
 xzn = np.outer(xz,np.linspace(1.,1.,th.size)) + defmag*uzn
@@ -61,7 +61,7 @@ ax2[0].plot(vn['S'],vn['z'], label = 'z')
 ax2[0].legend()
 
 ax2[1].plot_surface(xxn,xyn,xzn,linewidth=10, antialiased=True)
-ax2[1].plot_wireframe(x0xn,x0yn,x0zn+1.)
+#ax2[1].plot_wireframe(x0xn,x0yn,x0zn+1.)
 axlim = 1.5
 ax2[1].set_xlim3d([-axlim,axlim])
 ax2[1].set_ylim3d([-axlim,axlim])
