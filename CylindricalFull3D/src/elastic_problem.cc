@@ -41,6 +41,7 @@ void ElasticProblem::solve_path(){
 	std::vector<double> defmagvec = linspace(0.0,defmagmax,Nsteps);
 	Tensor<2,2> Btemp;
 	for (unsigned int i = 0; i < Nsteps; i++){
+		Btemp[1][1] = 0.2*defmagvec[i];
 		Btemp[0][0] = defmagvec[i];
 		Applied_Bending.set_all_values(Btemp);
 		newton_raphson();
