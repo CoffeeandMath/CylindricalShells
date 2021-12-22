@@ -35,7 +35,7 @@
 #include <thread>
 #include <future>
 #include <chrono>
-#include <deal.II/lac/solver_gmres.h>
+#include <deal.II/fe/fe_dgq.h>
 
 
 #include <deal.II/lac/lapack_full_matrix.h>
@@ -67,12 +67,13 @@ private:
 	void make_grid();
 	void setup_system();
 	void assemble_system();
+	void setup_constraints();
 	void initialize_configuration();
 	void output_results(const unsigned int) const;
 	void newton_raphson();
 	void solve();
 	void solve_path();
-
+	void calc_displacement();
 
 	Triangulation<DIM> triangulation;
 	FESystem<DIM>          fe;
@@ -83,7 +84,7 @@ private:
 
 
 	int quadegadd = 1;
-	int refinelevel = 4;
+	int refinelevel = 5;
 	SparsityPattern      sparsity_pattern;
 	SparseMatrix<double> system_matrix;
 	SparseMatrix<double> constraint_matrix;
@@ -95,6 +96,7 @@ private:
 	Vector<double> system_rhs;
 	Vector<double> linearsolve;
 	Vector<double> prev_solution;
+	Vector<double> displacement;
 
 
 	std::vector<Material_Class> Material_Vector_InPlane;
@@ -125,7 +127,7 @@ private:
 
 	double tol = 1.e-10;
 
-	double xdrag = 1.e-10;
+	double xdrag = 0.e-10;
 };
 }
 

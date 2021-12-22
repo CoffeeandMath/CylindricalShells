@@ -27,8 +27,8 @@ using namespace dealii;
 
 ElasticProblem::ElasticProblem()
 : fe(FESystem<DIM>(FE_Q<DIM>(shapefunctiondeg), 3),1,
-		FESystem<DIM>(FE_Q<DIM>(shapefunctiondeg),2),3,
-		FESystem<DIM>(FE_Q<DIM>(shapefunctiondeg),2),3)
+		FESystem<DIM>(FE_Q<DIM>(1),2),3,
+		FESystem<DIM>(FE_DGQ<DIM>(0),2),3)
 , dof_handler(triangulation){}
 
 
@@ -41,10 +41,12 @@ void ElasticProblem::solve_path(){
 	std::vector<double> defmagvec = linspace(0.0,defmagmax,Nsteps);
 	Tensor<2,2> Btemp;
 	for (unsigned int i = 0; i < Nsteps; i++){
+		std::cout << "Solving for step: " << i << "/" << (Nsteps-1) << std::endl;
 		Btemp[1][1] = 0.2*defmagvec[i];
 		Btemp[0][0] = defmagvec[i];
 		Applied_Bending.set_all_values(Btemp);
 		newton_raphson();
+		calc_displacement();
 		output_results(i);
 	}
 
@@ -103,6 +105,7 @@ void ElasticProblem::assemble_system(){
 	Tensor<2,2> FR_q;
 	Tensor<2,2> FRinv_q;
 	Tensor<2,2> P_q;
+	Tensor<2,2> P_q_T;
 
 	Tensor<2,2> E_q;
 	Tensor<2,2> B_q;
@@ -235,6 +238,11 @@ void ElasticProblem::assemble_system(){
 			P_q[1][0] = 0.0;
 			P_q[1][1] = sqrt(Acov_q[1][1] - Acov_q[0][1]*Acov_q[0][1]/(Acov_q[0][0]));
 
+			P_q_T[0][0] = P_q[0][0];
+			P_q_T[0][1] = P_q[1][0];
+			P_q_T[1][0] = P_q[0][1];
+			P_q_T[1][1] = P_q[1][1];
+
 			a1_q[0] = f1_n_q[q_index][0]; a1_q[1] = f2_n_q[q_index][0]; a1_q[2] = f3_n_q[q_index][0];
 			a2_q[0] = f1_n_q[q_index][1]; a2_q[1] = f2_n_q[q_index][1]; a2_q[2] = f3_n_q[q_index][1];
 
@@ -257,8 +265,8 @@ void ElasticProblem::assemble_system(){
 			}
 
 
-			E_q = 0.5*P_q*(Acontra_q*acov_q*Acontra_q - Acontra_q)*Transpose(P_q);
-			B_q = P_q*acontra_q*bcov_q*acontra_q*Transpose(P_q);
+			E_q = 0.5*P_q*(Acontra_q*acov_q*Acontra_q - Acontra_q)*P_q_T;
+			B_q = P_q*acontra_q*bcov_q*acontra_q*P_q_T;
 
 
 			Material_Vector_InPlane[cell_index].set_Params(Emodv,nu, E_q - Applied_Strain.get_value(cell_index,q_index));
@@ -305,9 +313,28 @@ void ElasticProblem::assemble_system(){
 						dbcov_i_q[ii][ij] = n_q*DDdx + dn_i_q*DDx;
 					}
 				}
+				if (dacov_i_q.norm() >1.e-12){
+					dE_i_q = 0.5*P_q*(Acontra_q*dacov_i_q*Acontra_q)*P_q_T;
+				} else {
+					dE_i_q = 0.;
+				}
 
-				dE_i_q = 0.5*P_q*(Acontra_q*dacov_i_q*Acontra_q)*Transpose(P_q);
-				dB_i_q = P_q*(acontra_q * dbcov_i_q * acontra_q + 2.0*Symmetric(acontra_q*bcov_q*dacontra_i_q))*Transpose(P_q);
+
+
+				double dbcov_i_q_norm = dbcov_i_q.norm();
+				double dacontra_i_q_norm = dacontra_i_q.norm();
+				double dtol = 1.e-12;
+				if (dbcov_i_q_norm > dtol && dacontra_i_q_norm < dtol){
+					dB_i_q = P_q*(acontra_q * dbcov_i_q * acontra_q)*P_q_T;
+				} else if (dbcov_i_q_norm < dtol && dacontra_i_q_norm > dtol) {
+					dB_i_q = 2.0*P_q*( Symmetric(acontra_q*bcov_q*dacontra_i_q))*P_q_T;
+				} else if (dbcov_i_q_norm > dtol && dacontra_i_q_norm > dtol) {
+					dB_i_q = P_q*(acontra_q * dbcov_i_q * acontra_q + 2.0*Symmetric(acontra_q*bcov_q*dacontra_i_q))*P_q_T;
+				} else {
+					dB_i_q = 0.;
+				}
+
+
 
 
 				for (const unsigned int j : fe_values.dof_indices()){
@@ -351,9 +378,24 @@ void ElasticProblem::assemble_system(){
 						}
 					}
 
-					dE_j_q = 0.5*P_q*(Acontra_q*dacov_j_q*Acontra_q)*Transpose(P_q);
-					dB_j_q = P_q*(acontra_q * dbcov_j_q * acontra_q + 2.0*Symmetric(acontra_q*bcov_q*dacontra_j_q))*Transpose(P_q);
+					if (dacov_j_q.norm() >1.e-12){
+						dE_j_q = 0.5*P_q*(Acontra_q*dacov_j_q*Acontra_q)*P_q_T;
+					} else {
+						dE_j_q = 0.;
+					}
 
+
+					double dbcov_j_q_norm = dbcov_j_q.norm();
+					double dacontra_j_q_norm = dacontra_j_q.norm();
+					if (dbcov_j_q_norm > dtol && dacontra_j_q_norm < dtol){
+						dB_j_q = P_q*(acontra_q * dbcov_j_q * acontra_q)*P_q_T;
+					} else if (dbcov_j_q_norm < dtol && dacontra_j_q_norm > dtol) {
+						dB_j_q = 2.0*P_q*( Symmetric(acontra_q*bcov_q*dacontra_j_q))*P_q_T;
+					} else if (dbcov_j_q_norm > dtol && dacontra_j_q_norm > dtol) {
+						dB_j_q = P_q*(acontra_q * dbcov_j_q * acontra_q + 2.0*Symmetric(acontra_q*bcov_q*dacontra_j_q))*P_q_T;
+					} else {
+						dB_j_q = 0.;
+					}
 
 					ddacov_ij_q[0][0] = da1_i_q*da1_j_q;
 					ddacov_ij_q[0][1] = da1_i_q*da2_j_q + da1_j_q*da2_i_q;
@@ -378,8 +420,15 @@ void ElasticProblem::assemble_system(){
 
 						}
 					}
-					ddE_ij_q = 0.5*P_q*(Acontra_q*ddacov_ij_q*Acontra_q)*Transpose(P_q);
-					ddB_ij_q = P_q*(acontra_q*ddbcov_ij_q*acontra_q + 2.0*Symmetric(dacontra_j_q*bcov_q*dacontra_i_q + acontra_q*(dbcov_i_q*dacontra_j_q + dbcov_j_q*dacontra_i_q + bcov_q*ddacov_ij_q)))*Transpose(P_q);
+
+					if (ddacov_ij_q.norm() > tol) {
+						ddE_ij_q = 0.5*P_q*(Acontra_q*ddacov_ij_q*Acontra_q)*P_q_T;
+					} else {
+						ddE_ij_q = 0.;
+					}
+
+
+					ddB_ij_q = P_q*(acontra_q*ddbcov_ij_q*acontra_q + 2.0*Symmetric(dacontra_j_q*bcov_q*dacontra_i_q + acontra_q*(dbcov_i_q*dacontra_j_q + dbcov_j_q*dacontra_i_q + bcov_q*ddacov_ij_q)))*P_q_T;
 
 
 
@@ -439,6 +488,76 @@ void ElasticProblem::assemble_system(){
 	}
 	constraints.condense(system_matrix);
 	constraints.condense(system_rhs);
+
+}
+
+void ElasticProblem::setup_constraints(){
+	constraints.clear();
+
+	const int ndofs = dof_handler.n_dofs();
+
+	//Creating masks for degrees of freedom
+	std::vector<bool> x1_components = create_bool_vector(15,0);
+	ComponentMask x1_mask(x1_components);
+	std::vector<bool> is_x1_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x1_mask, is_x1_comp);
+	//////////////////////////////////
+	std::vector<bool> x2_components = create_bool_vector(15,1);
+	ComponentMask x2_mask(x2_components);
+	std::vector<bool> is_x2_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x2_mask, is_x2_comp);
+	//////////////////////////////////
+	std::vector<bool> x3_components = create_bool_vector(15,2);
+	ComponentMask x3_mask(x3_components);
+	std::vector<bool> is_x3_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x3_mask, is_x3_comp);
+
+
+	std::vector<Point<DIM>> support_points(ndofs);
+	MappingQ1<DIM> mapping;
+	DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
+
+
+	int indxbl = 0;
+	int indybl = 0;
+	int indzbl = 0;
+
+	int indybr = 0;
+	int indzbr = 0;
+
+	int indzul = 0;
+
+	for (unsigned int i = 0; i < ndofs; i++){
+
+		if (support_points[i][0] <= support_points[indxbl][0] && support_points[i][1] <= support_points[indxbl][1] && is_x1_comp[i]) {
+			indxbl = i;
+		} else if (support_points[i][0] <= support_points[indybl][0] && support_points[i][1] <= support_points[indybl][1] && is_x2_comp[i]) {
+			indybl = i;
+		} else if (support_points[i][0] <= support_points[indzbl][0] && support_points[i][1] <= support_points[indzbl][1] && is_x3_comp[i]) {
+			indzbl = i;
+		} else if (support_points[i][0] >= support_points[indybr][0] && support_points[i][1] <= support_points[indybr][1] && is_x2_comp[i]){
+			indybr = i;
+		} else if (support_points[i][0] >= support_points[indzbr][0] && support_points[i][1] <= support_points[indzbr][1] && is_x3_comp[i]){
+			indzbr = i;
+		} else if (support_points[i][0] <= support_points[indzul][0] && support_points[i][1] <= support_points[indzul][1] && is_x3_comp[i]) {
+			indzul = i;
+		}
+
+
+		//constraints.add_line(i);
+	}
+
+
+
+
+	constraints.add_line(indxbl);
+	constraints.add_line(indybl);
+	constraints.add_line(indzbl);
+	constraints.add_line(indybr);
+	constraints.add_line(indzbr);
+	constraints.add_line(indzul);
+
+	constraints.close();
 
 }
 
@@ -513,6 +632,43 @@ void ElasticProblem::initialize_configuration(){
 			solution[i] = 0.0;
 		} else if (is_f22_comp[i]){
 			solution[i] = 1.0;
+		}
+	}
+
+}
+
+void ElasticProblem::calc_displacement(){
+	const int ndofs = dof_handler.n_dofs();
+
+	//////////////////////////////////
+	std::vector<bool> x1_components = create_bool_vector(15,0);
+	ComponentMask x1_mask(x1_components);
+	std::vector<bool> is_x1_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x1_mask, is_x1_comp);
+	//////////////////////////////////
+	std::vector<bool> x2_components = create_bool_vector(15,1);
+	ComponentMask x2_mask(x2_components);
+	std::vector<bool> is_x2_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x2_mask, is_x2_comp);
+	//////////////////////////////////
+	std::vector<bool> x3_components = create_bool_vector(15,2);
+	ComponentMask x3_mask(x3_components);
+	std::vector<bool> is_x3_comp(ndofs, false);
+	DoFTools::extract_dofs(dof_handler, x3_mask, is_x3_comp);
+
+
+	std::vector<Point<DIM>> support_points(ndofs);
+	MappingQ1<DIM> mapping;
+	DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
+
+
+	for (unsigned int i = 0; i < ndofs; i++){
+		if (is_x1_comp[i]){
+			displacement[i] = solution[i] - support_points[i][0];
+		} else if (is_x2_comp[i]){
+			displacement[i] = solution[i] - support_points[i][1];
+		} else {
+			displacement[i] = solution[i];
 		}
 	}
 
@@ -665,11 +821,11 @@ void ElasticProblem::make_grid()
 {
 
 
-	GridGenerator::hyper_cube(triangulation, -1.0, 1.0);
+	GridGenerator::hyper_cube(triangulation, -0.5, 0.5);
 	triangulation.refine_global(refinelevel);
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																																																																																																	<< std::endl << "   Total number of cells: "
-																																																																																																																																																																	<< triangulation.n_cells() << std::endl;
+																																																																																																																																																																							<< std::endl << "   Total number of cells: "
+																																																																																																																																																																							<< triangulation.n_cells() << std::endl;
 }
 
 std::vector<double> ElasticProblem::linspace(double start_in, double end_in, int num_in){
@@ -748,9 +904,9 @@ void ElasticProblem::output_results(const unsigned int cycle) const
 
 	std::vector<std::string> solution_names;
 
-	solution_names.emplace_back("x_displacement");
-	solution_names.emplace_back("y_displacement");
-	solution_names.emplace_back("z_displacement");
+	solution_names.emplace_back("ux");
+	solution_names.emplace_back("uy");
+	solution_names.emplace_back("uz");
 	solution_names.emplace_back("w_1_gradient");
 	solution_names.emplace_back("w_2_gradient");
 	solution_names.emplace_back("w_3_gradient");
@@ -773,7 +929,8 @@ void ElasticProblem::output_results(const unsigned int cycle) const
 	// string there. (In fact, the function we had used before would
 	// convert the single string into a vector with only one element
 	// and forwards that to the other function.)
-	data_out.add_data_vector(solution, solution_names);
+
+	data_out.add_data_vector(displacement, solution_names);
 	data_out.build_patches();
 
 	std::ofstream output("solutions/solution-" + std::to_string(cycle) + ".vtk");
@@ -790,8 +947,9 @@ void ElasticProblem::setup_system()
 	system_rhs.reinit(dof_handler.n_dofs());
 	linearsolve.reinit(dof_handler.n_dofs());
 	prev_solution.reinit(dof_handler.n_dofs());
+	displacement.reinit(dof_handler.n_dofs());
 	std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            																																																																																																																																																																																								<< std::endl;
+            																																																																																																																																																																																														<< std::endl;
 
 
 	DynamicSparsityPattern dsp(dof_handler.n_dofs(), dof_handler.n_dofs());
@@ -835,6 +993,7 @@ void ElasticProblem::run()
 			<< std::endl;
 	make_grid();
 	setup_system();
+	setup_constraints();
 	initialize_configuration();
 	solve_path();
 
