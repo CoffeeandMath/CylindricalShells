@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmaterialclass.a  CMakeFiles/materialclass.dir/src/material_class.cc.o
+/usr/bin/ranlib libmaterialclass.a

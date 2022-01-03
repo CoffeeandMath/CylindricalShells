@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/material_class.h
+deal.II/base/function.h
+-
+deal.II/base/tensor.h
+-
+deal.II/lac/vector.h
+-
+
+/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/src/material_class.cc
+material_class.h
+/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/src/material_class.h
+fstream
+-
+iostream
+-
+string
+-
+

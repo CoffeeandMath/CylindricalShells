@@ -1,0 +1,2 @@
+/usr/bin/ar qc libreferenceclass.a  CMakeFiles/referenceclass.dir/src/reference_configuration.cc.o
+/usr/bin/ranlib libreferenceclass.a

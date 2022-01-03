@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/read_file.h
+fstream
+-
+iostream
+-
+stdio.h
+-
+
+/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/src/read_file.cpp
+read_file.h
+/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/src/read_file.h
+iostream
+-
+string.h
+-
+
