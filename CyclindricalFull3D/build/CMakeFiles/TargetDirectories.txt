@@ -1,7 +1,0 @@
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/rebuild_cache.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/edit_cache.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/read_file.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/run.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/elasticproblemclass.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/materialclass.dir
-/home/kevin/Documents/Research/CylindricalShells/CyclindricalFull3D/build/CMakeFiles/referenceclass.dir

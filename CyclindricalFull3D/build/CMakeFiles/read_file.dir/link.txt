@@ -1,2 +1,0 @@
-/usr/bin/ar qc libread_file.a  CMakeFiles/read_file.dir/src/read_file.cpp.o
-/usr/bin/ranlib libread_file.a
