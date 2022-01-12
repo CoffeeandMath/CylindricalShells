@@ -1,0 +1,227 @@
+\documentclass[11pt]{article}
+%\renewcommand{\baselinestretch}{1.05}
+\usepackage{amsmath,amsthm,verbatim,amssymb,amsfonts,amscd, graphicx,hyperref}
+\usepackage{natbib}
+\usepackage{mathrsfs}
+\usepackage{graphics}
+\usepackage[top = 1in, bottom = 1in,left=.75in,right=.75in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{float}
+\pagestyle{fancy}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem*{surfacecor}{Corollary 1}
+\newtheorem{conjecture}{Conjecture} 
+\newtheorem{question}{Question} 
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem*{remark}{Remark}
+
+
+\DeclareMathOperator*{\ess}{ess}
+
+\begin{document}
+ 
+
+
+\title{Lab Notebook}
+\author{Kevin Korner}
+\maketitle
+
+
+\section{General Formulation}
+ We want to develop a method of modeling sheets based on some description of a manifold. We begin with a decomposition of our system into three distinct mappings. We denote our coordinate grid as $(\xi_1,\xi_2) = (\xi_\alpha) \in \Omega_0$. We then map that coordinate grid into $\mathbf{R}^3$ using a diffeomorphic mapping $\mathbf{X} : \Omega_0 \to \Omega$. We denote this configuration as the reference configuration and is generally the configuration at which the body is created in. For example, when a shell is 3D printed, this is the shape of the print. We then also introduce the mapping from $\mathbf{x} : \Omega_0 \to \omega$ which maps the coordinate grid to the current, deformed configuration. Note that we can write the mapping $\mathbf{x}(\xi_\alpha) = \tilde{\mathbf{x}}(\mathbf{X}(\xi_\alpha))$. For mechanics, we need the deformation gradient of this object. Particularly, we need the deformation gradient between the reference configuration and the current configuration. Given the composition of mappings, we have
+\[
+\mathbf{F} = \tilde{\mathbf{F}} \mathbf{F}_R
+\]
+where $\mathbf{F}$ is the deformation gradient of $\mathbf{x}$ with respect to the coordinate map, $\tilde{\mathbf{F}}$ is the deformation gradient of $\mathbf{x}$ with respect to the reference configuration, and $\mathbf{F}_R$ is the deformation gradient of $\mathbf{X}$ with respect to the coordinate grid. Note that we can write that
+\[
+\begin{split}
+\mathbf{F} &= \mathbf{a}_\alpha \otimes \mathbf{E}_\alpha \\
+\mathbf{F}_R &= \mathbf{A}_\alpha \otimes \mathbf{E}_\alpha
+ \end{split}
+\]
+Given that we would like to find $\mathbf{F}_R^{-1}$ in the tangent space, we can write
+\[
+\mathbf{F}_R^{-1} = \mathbf{E}_\alpha \otimes \mathbf{A}^{\alpha} = A^{\alpha \beta} \mathbf{E}_\alpha \otimes \mathbf{A}_\beta
+\]
+
+This gives,
+\[
+\mathbf{F}\mathbf{F}_R^{-1} = \left(\mathbf{a}_\alpha \otimes \mathbf{E}_\alpha \right) \left(A^{\beta \gamma} \mathbf{E}_\beta \otimes \mathbf{A}_\gamma \right) = A^{\alpha \beta} \mathbf{a}_\alpha \otimes \mathbf{A}_\beta
+\]
+
+The operating term in the strain is $\tilde{\mathbf{F}}$, where we can define the Lagrangian strain as
+\[
+\mathbf{E} = \frac{1}{2} \left( \tilde{\mathbf{F}}^T \tilde{\mathbf{F}} - \mathbf{I}\right) = \frac{1}{2} \left(\mathbf{F}_R^{-T} \mathbf{F}^T \mathbf{F} \mathbf{F}_R^{-1} - \mathbf{I} \right)
+\]
+
+Plugging in the above form of $\mathbf{F}\mathbf{F}_R^{-1}$ gives
+\[
+\begin{split}
+\mathbf{E} &= \frac{1}{2} \left( \left(A^{\alpha \beta} \mathbf{A}_\beta \otimes \mathbf{a}_\alpha\right)\left( A^{\gamma \eta}\mathbf{a}_{\gamma} \otimes \mathbf{A}_{\eta} \right) - A^{\alpha \beta}\mathbf{A}_\alpha \otimes \mathbf{A}_\beta\right)\\
+&= \frac{1}{2} \left( A^{\alpha \gamma} a_{\gamma \eta} A^{\eta \beta}   - A^{\alpha \beta}\right) \mathbf{A}_\alpha \otimes \mathbf{A}_\beta
+\end{split}
+\]
+
+Because the mapping $\mathbf{X}$ is a diffeomorphism, the inverse $\mathbf{F}_R^{-1}$ is well defined. Similarly, we need to calculate the curvature tensor. The normal vector at any point $(\xi_1,\xi_2)$ can be found as
+\[
+\mathbf{n}(\xi_\alpha) = \frac{\mathbf{a}_1 \times \mathbf{a}_2}{\| \mathbf{a}_1 \times \mathbf{a}_2 \|}
+\]
+where $\mathbf{a}_\alpha = \dfrac{\partial \mathbf{x}}{\partial \xi_\alpha}(\xi_\alpha)$ are the covariant basis vectors. Similarly, we can find the contravariant basis vectors using the relation that
+\[
+\mathbf{a}_\alpha \cdot \mathbf{a}^\beta = \delta_\alpha^\beta
+\]
+Because the contravariant vectors lie in the span of the covariant vectors, we require that $\mathbf{a}^\beta = a^{\beta \gamma} \mathbf{a}_\gamma$. Plugging this in, we have
+\[
+\delta_\alpha^\beta = \mathbf{a}_\alpha \cdot (a^{\beta \gamma} \mathbf{a}_\gamma) = a^{\beta \gamma} a_{\gamma \alpha} \Rightarrow [a^{\alpha \beta}] =[a_{\alpha \beta} ]^{-1} 
+\]
+
+This allows us to easily find the components of the contravariant basis vectors by taking the inverse of the component matrix of the covariant metric. 
+
+The components of the curvature tensor can be found as
+\[
+b_{\alpha \beta} = - \mathbf{n}_{,\beta} \cdot \mathbf{a}_\alpha
+\]
+
+Taking derivatives, we have
+\[
+\dfrac{\partial \mathbf{n}}{\partial \xi_\beta} = \frac{1}{\| \mathbf{a}_1 \times \mathbf{a}_2 \|} \left( \mathbf{I} - \mathbf{n} \otimes \mathbf{n} \right) \left( \dfrac{\partial \mathbf{a}_1}{\partial \xi_\beta} \times \mathbf{a}_2 + \mathbf{a}_1 \times \dfrac{\partial \mathbf{a}_2}{\partial \xi_\beta } \right)
+\]
+Then,
+\[
+b_{\alpha \beta} = - \frac{1}{\| \mathbf{a}_1 \times \mathbf{a}_2 \|} \left(\mathbf{a}_\alpha \right) \cdot \left( \dfrac{\partial \mathbf{a}_1}{\partial \xi_\beta} \times \mathbf{a}_2 + \mathbf{a}_1 \times \dfrac{\partial \mathbf{a}_2}{\partial \xi_\beta } \right)
+\]
+
+Using the property that
+\[
+\begin{split}
+\mathbf{a}_\alpha \times \mathbf{a}_1 &= - \delta_{2\alpha} (\mathbf{a}_1 \times \mathbf{a}_2) \\
+\mathbf{a}_{2} \times \mathbf{a}_\alpha &= - \delta_{1\alpha} (\mathbf{a}_1 \times \mathbf{a}_2)
+\end{split}
+\]
+
+This simplifies to
+\[
+b_{\alpha \beta}(\xi_\gamma) = \mathbf{n}(\xi_\gamma) \cdot \dfrac{\partial^2 \mathbf{x}}{\partial \xi_\alpha \partial \xi_\beta} (\xi_\gamma)
+\]
+
+Now, we can construct the Eulerian curvature tensor as
+\[
+\mathbf{b} = b_{\alpha \beta} \mathbf{a}^\alpha \otimes \mathbf{a}^\beta = \left(\mathbf{n}(\xi_\gamma) \cdot \dfrac{\partial^2 \mathbf{x}}{\partial \xi_\alpha \partial \xi_\beta} (\xi_\gamma) \right)\mathbf{a}^\alpha \otimes \mathbf{a}^\beta = \mathbf{n}(\xi_\gamma) \cdot \mathcal{D}^2 \mathbf{x}(\xi_\gamma)
+\]
+
+where the second variation tensor is defined as $\mathcal{D}^2 \mathbf{x} = \dfrac{\partial^2 \mathbf{x}}{\partial \xi_\alpha \partial \xi_\beta} (\xi_\gamma)\otimes \mathbf{a}^\alpha \otimes \mathbf{a}^\beta$. For practical calculations, we will take all these quantities and project them onto an orthonormal basis. This allows us to deal with matrices rather than tensors. Note that $\mathbf{b}$ is written fully in the current configuration. Ideally, we would like to pull back the quantity into the reference configuration. This is done with
+\[
+\begin{split}
+\mathbf{B} &= \mathbf{\tilde{F}}^{-1} \mathbf{b} \mathbf{\tilde{F}}^{-T}\\
+&= \mathbf{\tilde{F}}^{-1} \left(b_{\alpha \beta} \mathbf{a}^\alpha \otimes \mathbf{a}^\beta \right) \mathbf{\tilde{F}}^{-T} \\
+&= b_{\alpha \beta} a^{\alpha \gamma} a^{\beta \eta} \mathbf{A}_{\gamma} \otimes \mathbf{A}_{\eta}
+\end{split}
+\]
+Additionally, we would like to project both $\mathbf{E}$ and $\mathbf{B}$ onto an orthogonal basis. This is so we have proper dimensionality of our strains and are able to properly assign applied strains. Let an orthogonal basis in the reference configuration at point $(\xi^\alpha)$ be given by $\mathbf{Q}_\alpha$. By construction, we set
+\[
+\mathbf{Q}_1 = \frac{\mathbf{A}_1}{ \| \mathbf{A}_1 \|} \, .
+\]
+
+Then, using a Gram-Schmidt process, we can calculate
+\[
+\mathbf{Q}_2 = \frac{\mathbf{A}_2 - (\mathbf{Q}_1 \cdot \mathbf{A}_2)\mathbf{Q}_1}{\|\mathbf{A}_2 - (\mathbf{Q}_1 \cdot \mathbf{A}_2)\mathbf{Q}_1 \|} = \frac{\mathbf{A}_2 - \frac{A_{12}}{A_{11}}\mathbf{A}_1}{\sqrt{A_{22} - \frac{\left(A_{12}\right)^2}{A_{11}}}} \, .
+\]
+
+We can then construct a mapping $P : \mathbf{Q}_\alpha \to \mathbf{A}_\alpha$ as 
+\[
+\mathbf{P} = \mathbf{A}_\alpha \otimes \mathbf{Q}_{\alpha}\, .
+\]
+This gives that
+\[
+\mathbf{A}_\alpha = \mathbf{P}\mathbf{Q}_\alpha
+\]
+
+Additionally, we can write $\mathbf{P}$ in the $\mathbf{Q}_\alpha$ basis as
+\[
+\mathbf{P} = P_{\alpha \beta} \mathbf{Q}_\alpha \otimes \mathbf{Q}_\beta
+\]
+where
+\[
+\begin{split}
+P_{11} &= \mathbf{Q}_1 \cdot \mathbf{P} \cdot \mathbf{Q}_1 = \sqrt{A_{11}} \\
+P_{12} &= \mathbf{Q}_1 \cdot \mathbf{P} \cdot \mathbf{Q}_2 = \frac{A_{12}}{\sqrt{A_{11}}} \\
+P_{21} &= \mathbf{Q}_2 \cdot \mathbf{P} \cdot \mathbf{Q}_1 = 0 \\
+P_{22} &= \mathbf{Q}_2 \cdot \mathbf{P} \cdot \mathbf{Q}_2 = \sqrt{A_{22} - \frac{(A_{12})^2}{A_{11}}}
+\end{split}
+\]
+Plugging this into an arbitrary matrix,
+\[
+\mathbf{M} = M^{\alpha \beta} \mathbf{A}_\alpha \otimes \mathbf{A}_\beta =  M^{\alpha \beta} \left( \mathbf{P} \mathbf{Q}_\alpha\right) \otimes \left( \mathbf{P} \mathbf{Q}_\beta \right) = P_{\gamma \alpha} M^{\alpha \beta} P_{\eta \beta} \mathbf{Q}_{\gamma} \otimes \mathbf{Q}_\eta
+\]
+
+Now we can see the utility of this projection. Consider the strain $\mathbf{E}$, we can then write it in the orthonormal basis as
+\[
+E = \frac{1}{2} P  \left( A^{c} a A^{c} - A^c \right)P^T
+\]
+and the curvature as
+\[
+B = P a^c b a^c P^T
+\]
+
+
+\section{Bifurcation Analysis of Asymmetric Modes}
+
+Let's assume we have the configuration $\mathbf{x}_0$ solved from the symmetric case. The, we would like to study whether asymmetric modes exist which break symmetry. The energy of the whole system is given by
+\[
+\mathcal{E} = \int_0^L \int_0^{2\pi} \left( h Q_1 (E - E_a)  + h^3 Q_2 (B - B_r - B_a)\right) R d \theta dS 
+\]
+
+If we then take two separate variations to study stability, we have
+\[
+\delta^2 \mathcal{E} = \int_0^L \int_0^{2\pi} \left( h \delta_2 E \cdot \dfrac{\partial Q_1}{\partial E^2} \cdot \delta_1 E  + h \dfrac{\partial Q_1}{\partial E} \cdot \delta^2 E + h^3 \delta_2 B \cdot \dfrac{\partial Q_2}{\partial B} \cdot \delta_1 B + h^3\dfrac{\partial Q_2}{\partial B} \cdot \delta^2 B \right) R d\theta dS
+\]
+
+Because we would like to study Fourier components, we use the form
+\[
+\delta_i \mathbf{u}(S,\theta) = \delta_i \mathbf{u}_0 (S,\theta) + \sum_{n=1}^\infty \left( \delta_i \mathbf{v}_n(S,\theta) \cos(n \theta) + \delta_i\mathbf{w}_n(S,\theta) \sin (n \theta) \right)
+\]
+
+Let's consider derivatives of this expression. 
+\[
+\dfrac{\partial \delta_i \mathbf{v}_n}{\partial S}(S,\theta) = \dfrac{\partial \delta_i v_n^r}{\partial S}(S) \mathbf{e}_r(\theta) + \dfrac{\partial \delta_i v_n^\theta}{\partial S}(S) \mathbf{e}_\theta(\theta) + \dfrac{\partial \delta_i v_n^\theta}{\partial S}(S) \mathbf{e}_z = \delta_i \mathbf{v}_n ' (S,\theta )
+\]
+\[
+\dfrac{\partial \delta_i \mathbf{v}_n}{\partial \theta}(S,\theta) = \delta_i v_n^r(S) \mathbf{e}_\theta (\theta) - \delta_i v_n^\theta (S) \mathbf{e}_r(\theta) = \mathbf{e}_z \times \delta_i \mathbf{v}_n(S,\theta)
+\]
+
+This gives
+\[
+\begin{split}
+\dfrac{\partial \delta_i \mathbf{u}}{\partial S}(S,\theta) &= \delta_i \mathbf{u}_0'(S,\theta) + \sum_{n=1}^\infty \left( \delta_i \mathbf{v}_n' (S,\theta) \cos(n \theta) + \delta_i \mathbf{w}_n'(S,\theta) \sin (n \theta) \right) \\
+\dfrac{\partial \delta_i \mathbf{u}}{\partial \theta}(S,\theta) &= \mathbf{e}_z \times \delta_i \mathbf{u}_0(S,\theta) + \sum_{n=1}^\infty \left( \mathbf{e}_z \times \delta_i \mathbf{v}_n(S,\theta) \cos(n \theta) + \mathbf{e}_z \times \delta_i \mathbf{w}_n(S,\theta) \sin(n \theta) \right) \\
+&+ \sum_{n=1}^\infty \left( - n \delta_i \mathbf{v}_n(S,\theta) \sin(n \theta) + n \delta_i \mathbf{w}_n(S,\theta) \cos(n \theta) \right) \\
+&= \mathbf{e}_z \times \delta_i \mathbf{u}_0(S,\theta) + \sum_{n=1}^\infty \left( \left( \mathbf{e}_z \times \delta_i \mathbf{v}_n(S,\theta) + n \delta_i \mathbf{w}_n(S,\theta) \right) \cos(n \theta) + \left( \mathbf{e}_z \times \delta_i \mathbf{w}_n(S,\theta) - n \delta_i \mathbf{v}_n(S,\theta) \right) \sin(n \theta) \right) \\
+&= \mathbf{e}_z \times \delta_i \mathbf{u}(S,\theta) + \sum_{n=1}^\infty \left( n \delta_i \mathbf{w}_n(S,\theta) \cos(n \theta) - n \delta_i \mathbf{v}_n (S,\theta) \sin(n \theta) \right)
+\end{split}
+\]
+
+The second to last form is the most useful because we will need to identify terms matching with sines and cosines.
+
+
+We will also need the second derivatives. We have
+\[
+\dfrac{\partial^2 \delta_i \mathbf{u}}{\partial S^2} (S,\theta) = \delta_i \mathbf{u}_0''(S,\theta) + \sum_{n=1}^\infty \left( \delta_i \mathbf{v}_n''(S,\theta) \cos(n \theta) + \delta_i \mathbf{w}_n''(S,\theta) \sin(n \theta) \right)
+\]
+\[
+\dfrac{\partial^2 \delta_i \mathbf{u}}{\partial S \partial \theta} (S,\theta) = \mathbf{e}_z \times \delta_i \mathbf{u}_0'(S,\theta) + \sum_{n=1}^\infty \left( \left( \mathbf{e}_z \times \delta_i \mathbf{v}_n'(S,\theta) + n \delta_i \mathbf{w}_n'(S,\theta) \right) \cos (n \theta) + \left( \mathbf{e}_z \times \delta_i \mathbf{w}_n'(S,\theta) - n \delta_i \mathbf{v}_n'(S,\theta)  \right) \sin(n \theta) \right)
+\]
+\[
+\begin{split}
+\dfrac{\partial^2 \delta_i \mathbf{u}}{\partial \theta^2} (S,\theta) &= \mathbf{e}_z \times \left( \dfrac{\partial \delta_i \mathbf{u}}{\partial \theta}(S,\theta) \right) \\
+&+ \sum_{n=1}^\infty \left( \left( n \mathbf{e}_z \times \delta_i \mathbf{w}_n(S,\theta) - n^2 \delta_i  \mathbf{v}_n(S,\theta)\right) \cos(n \theta) +  \left( - n \mathbf{e}_z \times \delta_i \mathbf{v}_n(S,\theta)  - n^2 \delta_i \mathbf{w}_n(S,\theta)\right)\sin(n \theta)  \right) 
+\end{split}
+\]
+
+The benefit of this formulation is that it splits up the variations into pairs of sines and cosines. Then, using Fourier orthogonality, we can consider only components with matching order and trigonometric function.
+\end{document} 
