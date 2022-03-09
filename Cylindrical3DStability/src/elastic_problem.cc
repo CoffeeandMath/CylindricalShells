@@ -762,16 +762,16 @@ void ElasticProblem::assemble_system()
 
 
 					Tensor<2,2> DDa_cos_q;
-					DDa_cos_q[0][0] = dUdS_cos_i_q*dUdS_cos_j_q;
-					DDa_cos_q[0][1] = (dUdS_cos_i_q*dUdtheta_cos_j_q + dUdS_cos_j_q*dUdtheta_cos_i_q)/(2.0*Rref);
+					DDa_cos_q[0][0] = 2.0*dUdS_cos_i_q*dUdS_cos_j_q;
+					DDa_cos_q[0][1] = (dUdS_cos_i_q*dUdtheta_cos_j_q + dUdS_cos_j_q*dUdtheta_cos_i_q)/(Rref);
 					DDa_cos_q[1][0] = DDa_cos_q[0][1];
-					DDa_cos_q[1][1] = (dUdtheta_cos_i_q*dUdtheta_cos_j_q)/(2.0*Rref*Rref);
+					DDa_cos_q[1][1] = 2.0*(dUdtheta_cos_i_q*dUdtheta_cos_j_q)/(Rref*Rref);
 
 					Tensor<2,2> DDa_sin_q;
-					DDa_sin_q[0][0] = dUdS_sin_i_q*dUdS_sin_j_q;
-					DDa_sin_q[0][1] = (dUdS_sin_i_q*dUdtheta_sin_j_q + dUdS_sin_j_q*dUdtheta_sin_i_q)/(2.0*Rref);
+					DDa_sin_q[0][0] = 2.0*dUdS_sin_i_q*dUdS_sin_j_q;
+					DDa_sin_q[0][1] = (dUdS_sin_i_q*dUdtheta_sin_j_q + dUdS_sin_j_q*dUdtheta_sin_i_q)/(Rref);
 					DDa_sin_q[1][0] = DDa_sin_q[0][1];
-					DDa_sin_q[1][1] = (dUdtheta_sin_i_q*dUdtheta_sin_j_q)/(2.0*Rref*Rref);
+					DDa_sin_q[1][1] = 2.0*(dUdtheta_sin_i_q*dUdtheta_sin_j_q)/(Rref*Rref);
 
 					Tensor<2,2> Db1_cos_j_q;
 					Db1_cos_j_q[0][0] = n0_q*ddUddS_cos_j_q;

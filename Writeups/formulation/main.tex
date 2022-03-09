@@ -28,7 +28,7 @@
  
 
 
-\title{Lab Notebook}
+\title{Notes on Shells}
 \author{Kevin Korner}
 \maketitle
 
@@ -162,25 +162,164 @@ Plugging this into an arbitrary matrix,
 
 Now we can see the utility of this projection. Consider the strain $\mathbf{E}$, we can then write it in the orthonormal basis as
 \[
-E = \frac{1}{2} P  \left( A^{c} a A^{c} - A^c \right)P^T
+E = \frac{1}{2} P  \left( A^{c} a_c A^{c} - A^c \right)P^T
 \]
 and the curvature as
 \[
-B = P a^c b a^c P^T
+B = P a^c b_c a^c P^T
 \]
 
+where lower indices indicate the covariant matrix and upper indices indicate the contravariant matrix.
 
-\section{Bifurcation Analysis of Asymmetric Modes}
-
-Let's assume we have the configuration $\mathbf{x}_0$ solved from the symmetric case. The, we would like to study whether asymmetric modes exist which break symmetry. The energy of the whole system is given by
+The energy of the whole system is given by
 \[
-\mathcal{E} = \int_0^L \int_0^{2\pi} \left( h Q_1 (E - E_a)  + h^3 Q_2 (B - B_r - B_a)\right) R d \theta dS 
+\mathcal{E} = \int_{\Omega_0} \left( h Q_1 (E - E_a)  + h^3 Q_2 (B - B_r - B_a)\right) J d \Omega_0
+\]
+where $J$ is the Jacobian of the transformation from the coordinate grid to the reference configuration.
+
+For equilibrium, we generally want to solve for when the internal, stored energy is equal to some external forcing. The first variation gives
+\[
+\delta \mathcal{E} = \int_{\Omega_0} \left( h \dfrac{\partial Q_1}{\partial E} \cdot \delta E + h^3 \dfrac{\partial Q_2}{\partial B} \cdot \delta B \right) J d\Omega_0
 \]
 
 If we then take two separate variations to study stability, we have
 \[
-\delta^2 \mathcal{E} = \int_0^L \int_0^{2\pi} \left( h \delta_2 E \cdot \dfrac{\partial Q_1}{\partial E^2} \cdot \delta_1 E  + h \dfrac{\partial Q_1}{\partial E} \cdot \delta^2 E + h^3 \delta_2 B \cdot \dfrac{\partial Q_2}{\partial B} \cdot \delta_1 B + h^3\dfrac{\partial Q_2}{\partial B} \cdot \delta^2 B \right) R d\theta dS
+\delta^2 \mathcal{E} = \int_{\Omega_0} \left( h \delta_2 E \cdot \dfrac{\partial Q_1}{\partial E^2} \cdot \delta_1 E  + h \dfrac{\partial Q_1}{\partial E} \cdot \delta^2 E + h^3 \delta_2 B \cdot \dfrac{\partial Q_2}{\partial B} \cdot \delta_1 B + h^3\dfrac{\partial Q_2}{\partial B} \cdot \delta^2 B \right)J d\Omega_0
 \]
+
+\section{Augmented Lagrangians (General Form)}
+A particular difficulty with modeling shells is the presence of second derivatives. The standard finite element method, even with the inclusion of higher order Lagrangian elements does not solve these problems well, as discontinuities at the boundaries of elements presents an issue. To make the notation simple, for this section I use the notation
+\[
+\mathcal{E} = \int_{\Omega_0}  e(\mathbf{x}, \nabla \mathbf{x}, \nabla \nabla \mathbf{x}) J d \Omega_0
+\]
+In order to get around this, we introduce a new set of variables $\mathbf{f} \in H_1^{3 \times 2}$ which we want to constrain to equal the gradient of $\mathbf{x}$. We do this by using the method of Augmented Lagrangians. We write our energy as
+\[
+\mathcal{L} = \int_{\Omega_0} \left( e(\mathbf{x},\nabla \mathbf{x}, \nabla \mathbf{f})  - \boldsymbol{\lambda} \cdot \left( \nabla \mathbf{x} - \mathbf{f} \right) + \frac{\mu}{2} \| \nabla \mathbf{x} - \mathbf{f} \|^2 \right) J d\Omega_0
+\]
+
+We also introduced $\boldsymbol{\lambda} \in L_1$ as the Lagrange multiplier and $\mu$ to stabilize the solution. In solving for equilibrium configurations, we treat $\boldsymbol{\lambda}$ as another degree of freedom. Taking the first variation of this energy, we have
+\[
+\delta \mathcal{L} = \int_{\Omega_0} \left( \dfrac{\partial e}{\partial \mathbf{x}} \cdot \delta \mathbf{x} + \dfrac{\partial e}{\partial \nabla \mathbf{x}} \cdot \nabla \delta \mathbf{x} + \dfrac{\partial e}{\partial \nabla \nabla \mathbf{x}} \cdot \nabla \delta f  - \boldsymbol{\lambda} \cdot (\nabla \delta \mathbf{x} - \delta \mathbf{f}) - \delta \boldsymbol{\lambda} \cdot (\nabla \mathbf{x} - \mathbf{f}) + \mu (\nabla\mathbf{x} - \mathbf{f})\cdot (\nabla \delta \mathbf{x} - \delta \mathbf{f})\right) J d\Omega_0
+\]
+
+It can be seen that one of the conditions for finding a stationary solution is 
+\[
+\int_{\Omega_0} \delta \boldsymbol{\lambda}\cdot (\nabla \mathbf{x} - \mathbf{f} ) J d \Omega_0 = 0
+\]
+for arbitrary $\delta \boldsymbol{\lambda}$, which is a weak form of the constraint we are trying to satisfy. We can then find the second variations to find Hessians of the Augmented Lagrangian, which allows us to use a Newton-Raphson iterator to find equilibrium solutions.
+
+\subsection{Stability}
+
+In order to study the stability of the system, we need to look at eigenvalues of the Hessian. This can be written in general form as
+\[
+[\mathbf{y}_x,\mathbf{y}_{f}]^T \begin{bmatrix}
+H_{xx} &&  H_{xf} \\
+H_{fx} &&  H_{ff}
+\end{bmatrix} \begin{bmatrix}
+\mathbf{y}_{x} \\ \mathbf{y}_{f}
+\end{bmatrix} > 0
+\]
+For all $\mathbf{y}$.
+
+
+The problem with this is that, due to the Augmented Lagrangian method, we need to satisfy that search directions are those tangent to the constraints. The system must then satisfy
+\[
+\int_{\Omega_0} \phi \cdot (\nabla \mathbf{x} - \mathbf{f}) J d\Omega_0 = 0
+\]
+
+If we choose to project this constraint onto both the $\mathbf{x}$ and $\mathbf{f}$ components, the discretized system will be over-constrained. This is because we would have a constraint for every degree of freedom. We then choose to project the constraint onto the space of test functions for $\mathbf{f}$. More formally, we choose $\phi = \delta_i \mathbf{f}$. Once discretized, because the constraint equation is affine in both $\mathbf{x}$ and $\mathbf{f}$, we can write this as
+\[
+C_{xf}[\mathbf{x}] = C_{ff} [\mathbf{f}]
+\]
+where the backet notation indicates the vector of degrees of freedom and $C_{xf}$ and $C_{ff}$ are the matrices that integrate the shape functions. Rearranging, we have
+\[
+[\mathbf{f}] = C_{ff}^{-1} C_{xf} [\mathbf{x}] = \Gamma [\mathbf{x}]
+\]
+
+We additionally apply this constraint to the notion of stability mentioned above. We have
+
+\[
+\mathbf{y}_x^T H_{xx} \mathbf{y}_x + \mathbf{y}_x^T H_{xf} \mathbf{y}_f + \mathbf{y}_f^T H_{yx} \mathbf{y}_x + \mathbf{y}_f^T H_{ff} \mathbf{y}_f = \mathbf{y}_x \tilde{H} \mathbf{y}_x >0
+\]
+where
+\[
+\tilde{H} =  H_{xx} + H_{xf}\Gamma + \Gamma^T H_{fx} + \Gamma^T  H_{ff}\Gamma 
+\]
+is the effective stiffness matrix which condenses the constraints. By studing eigenvalues of this matrix we should be able to find when particular modes become unstable by searching for zero eigenvalues.
+\section{Augmented Lagrangians (Symmetric Form)}
+
+For the symmetric deformation ansatz, we write 
+\[
+\mathbf{x}(S,\theta) = r(S) \mathbf{e}_r(\theta) + z(S) \mathbf{e}_z
+\]
+with reference configuration given by
+\[
+\mathbf{X}(S,\theta) = R(S) \mathbf{e}_r(\theta) + Z(S) \mathbf{e}_z\, .
+\]
+We assume the arc-length parameter $S$ is given in the reference configuration so $R'(S)^2 + Z'(S)^2 = 1$. The reference covariant and contravariant metrics are
+\[
+A_c = \begin{bmatrix}
+1 && 0 \\
+0 && R(S)^2
+\end{bmatrix} \quad \quad A^c = \begin{bmatrix}
+1 && 0 \\
+0 && \frac{1}{R(S)^2}
+\end{bmatrix}
+\]
+
+The current configuration has metrics given by
+\[
+a_c = \begin{bmatrix}
+r'(S)^2 + z'(S)^2 && 0 \\
+0 && r(S)^2
+\end{bmatrix} \quad \quad a^c = \begin{bmatrix}
+\frac{1}{r'(S)^2 + z'(S)^2} && 0 \\
+0 && \frac{1}{r(S)^2}
+\end{bmatrix}
+\]
+
+The current covariant curvature is
+\[
+b_c = \begin{bmatrix}
+\frac{r'(S) z''(S) - r''(S) z'(S)}{\sqrt{r'(S)^2 + z'(S)^2}} && 0 \\
+0 && \frac{r(S) z'(S)}{\sqrt{r'(S)^2 + z'(S)^2}}
+\end{bmatrix}
+\]
+
+Plugging into the above formulas for strains give
+\[
+E = \begin{bmatrix}
+\frac{1}{2} \left(r'(S)^2 + z'(S)^2 - 1 \right) && 0 \\
+0 && \frac{r(S)^2}{R(S)^2} - 1
+\end{bmatrix}
+\]
+\[
+B = \begin{bmatrix}
+\frac{z''(S) r'(S) - r''(S)z'(S)}{(r'(S)^2 + z'(S)^2)^{5/2}} && 0 \\
+0 && \frac{R(S)^2 z'(S)}{r(S)^3\sqrt{r'(S)^2 + z'(S)^2}}
+\end{bmatrix}
+\]
+
+Following the previous section, we use Augmented Lagrangians to reduce the order of the system. We write
+\[
+\begin{split}
+\mathcal{L} = 2 \pi \int_0^L (& e(r(S),z(S),r'(S),z'(S),f_r'(S),f_z'(S))\\
+ & - \lambda_r (r'(S) - f_r(S)) - \lambda_z (z'(S) - f_z(S)) \\
+ & +\frac{\mu}{2} ((r'(S) - f_r(S))^2 + (z'(S) - f_z(S))^2) ) R dS
+\end{split}
+\]
+
+The first variation is 
+\[
+\begin{split}
+\delta \mathcal{L} = 2 \pi \int_0^L ( \delta e &- \delta \lambda_r (r'(S) - f_r(S)) - \lambda_r (\delta r'(S) - \delta f_r(S))\\
+& - \delta \lambda_z (z'(S) - f_z(S)) - \lambda_z (\delta z'(S) - \delta f_z(S)) \\
+& +\mu ((r'(S) - f_r(S))(\delta r'(S) - \delta f_r(S)) + (z'(S) - f_z(S))(\delta z'(S) - \delta f_z(S)))) R dS
+\end{split}
+\]
+\section{Bifurcation Analysis of Asymmetric Modes}
+
+Let's assume we have the configuration $\mathbf{x}_0$ solved from the symmetric case. The, we would like to study whether asymmetric modes exist which break symmetry. 
 
 Because we would like to study Fourier components, we use the form
 \[
@@ -223,5 +362,52 @@ We will also need the second derivatives. We have
 \end{split}
 \]
 
-The benefit of this formulation is that it splits up the variations into pairs of sines and cosines. Then, using Fourier orthogonality, we can consider only components with matching order and trigonometric function.
+The benefit of this formulation is that it splits up the variations into pairs of sines and cosines. Consider the first variations of $E$ and $B$, we have 
+\[
+\delta_i E = \frac{1}{2} P A^c \delta_i a_c A^c P^T \, \quad \delta_i B = P \left(\delta_i a^c b_c a^c + a^c \delta_i b_c a^c + a^c b_c \delta_i a^c  \right)P^T = P(a^c \delta_i b_c a^c + \text{sym}(a^c b_c \delta_i a^c))P^T \, .
+\]
+
+Notice that these are all linear in the perturbation. Additionally, the internal perturbations are linear with respect to the perturbations $\delta_i \mathbf{u}$. This means that $\delta_i E$ and $\delta_i B$ can be expanded as
+\[
+\begin{split}
+\delta_i E &= \delta_i E_0 + \sum_{n=1}^\infty \left(\delta_i E_n^c \cos(n \theta) + \delta_i E_n^s \sin(n \theta) \right)\\
+\delta_i B &= \delta_i B_0 + \sum_{n=1}^\infty \left(\delta_i B_n^c \cos(n \theta) + \delta_i B_n^s \sin(n \theta) \right)
+\end{split}
+\]
+
+Now, considering just the first term in the energy, we have
+\[
+\int_0^L \int_0^{2 \pi} h \left(\delta_j E_0 + \sum_{m=1}^\infty \left(\delta_j E_m^c \cos(m \theta) + \delta_j E_m^s \sin(m \theta) \right) \right)\cdot \dfrac{\partial Q_1}{\partial E^2} \cdot \left(\delta_i E_0 + \sum_{n=1}^\infty \left(\delta_i E_n^c \cos(n \theta) + \delta_i E_n^s \sin(n \theta) \right) \right) R d\theta d S
+\]
+
+Integrating over $\theta$, we can use the orthogonality of Fourier projections to simplify this to
+\[
+\int_0^L \pi  h \left(2 \delta_i E_0 \cdot \dfrac{\partial Q_1}{\partial E^2} \cdot \delta_j E_0 + \sum_{n=1}^\infty \left(\delta_j E_n^c \cdot \dfrac{\partial^2 Q_1}{\partial E^2} \cdot \delta_i E_n^c  + \delta_i E_n^s \cdot \dfrac{\partial^2 Q_1}{\partial E^2} \cdot \delta_i E_n^s\right) \right) R dS
+\]
+
+A similar decomposition will also hold for the second variations of the curvature, $B$. The will generally take the from
+
+\[
+\int_0^L \int_0^{2\pi} h \dfrac{\partial Q_1}{\partial E} \cdot \delta^2 E R d\theta dS = \int_0^L \int_0^{2\pi} h \dfrac{\partial Q_1}{\partial E} \cdot \left( \delta_j e \cdot C \cdot \delta_i e \right) R d\theta dS
+\]
+
+where $C$ is some $4^\text{th}$ order tensor dependent on the configuration. The perturbations can then be expanded similarly to before as
+\[
+\int_0^L \int_0^{2\pi}  h \dfrac{\partial Q_1}{\partial E} \cdot \left( \left(\delta_j e_0 + \sum_{m = 1}^\infty \left( \delta_j e_m^c \cos(m \theta) + \delta_j e_m^s \sin(m \theta) \right)\right) \cdot C \cdot \left(\delta_i e_0 + \sum_{n = 1}^\infty \left( \delta_i e_n^c \cos(n \theta) + \delta_i e_n^s \sin(n \theta) \right) \right) \right) R d\theta dS
+\]
+
+Integrating over $\theta$ and using orthogonality, we have
+\[
+= \int_0^L \pi h \dfrac{\partial Q_1}{\partial E} \cdot \left( 2 \delta_j e_0 \cdot C \cdot \delta_i e_0 + \sum_{n=1}^\infty \left( \delta_j e_n^c \cdot C \cdot \delta_j e_n^c + \delta_j e_n^s \cdot C \cdot \delta_i e_n^s \right) \right) R dS
+\]
+
+Now it can be seen that $\delta^2 \mathcal{E} $ takes the form
+\[
+\delta^2 \mathcal{E} = \delta^2 \mathcal{E}_0 + \pi \sum_{n = 1}^\infty\left( \delta^2 \mathcal{E}_n^c + \delta^2 \mathcal{E}_n^s \right)
+\]
+
+When discretized, this will be an infinitely massive matrix because we are discretizing every order of the Fourier transform. We get around this by first, limiting the number of modes we analyze to the first few. Then, we also see that each order of Fourier mode is independent from every other order. In this case, this massive Hessian matrix will take on a block-diagonal form. Because of this, we can study the eigenvalues of each block of the matrix, corresponding to an individual mode at a time.
+
+
+
 \end{document} 

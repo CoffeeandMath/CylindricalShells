@@ -1,0 +1,12 @@
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+lib*.a
+run
+.project
+.cproject
+.settings/
+solutions/r_*
+solutions/z_*
+build/*

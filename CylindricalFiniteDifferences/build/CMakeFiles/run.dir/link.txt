@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3  -rdynamic CMakeFiles/run.dir/src/main.cpp.o  -o run  libnode.a libelement.a libreference.a libmaterial.a libelasticproblem.a liblc.a libdofhandler.a libelement.a libnode.a libreference.a libmaterial.a libhvector.a libhmatrix.a libhvector.a libhmatrix.a 

@@ -1,0 +1,102 @@
+/*
+ * referenceconfiguration.cpp
+ *
+ *  Created on: Jul 14, 2021
+ *      Author: kevin
+ */
+
+#include "reference_configuration.h"
+
+Reference_Configuration::Reference_Configuration() {
+	// TODO Auto-generated constructor stub
+
+}
+
+Reference_Configuration::~Reference_Configuration() {
+	// TODO Auto-generated destructor stub
+}
+
+
+
+
+void Reference_Configuration::set_point(double S){
+	S_Point = S;
+
+	calc_covariants();
+
+
+}
+
+void Reference_Configuration::calc_covariants(){
+
+	auto sinphifun = [this](double s){
+		return sin(phifun(s));
+	};
+
+
+
+
+	double dR = 0.0;
+	if (S_Point>0){
+		double tol = 1e-8;
+		int max_refinements = 30;
+		dR = trapezoidal(sinphifun,0.0,S_Point,tol, max_refinements);
+		//std::cout << dR << std::endl;
+	}
+
+	Rval = R0 + dR;
+	Cov[0][0] = 0.5;
+	Cov[1][1] = 0.5*pow(Rval,2.0);
+
+	Form2[0][0] = -dphifun(S_Point);
+	Form2[1][1] = cos(phifun(S_Point))/Rval;
+
+
+}
+
+double Reference_Configuration::phifun(double s) {
+	double offset = defmag;
+	double offsetlim = 0.5;
+	if (offset > offsetlim) {
+		offset = offsetlim;
+	}
+
+	return 0.5*defmag*s*s + offset;
+	//return -defmag * s + offset;
+}
+
+double Reference_Configuration::dphifun(double s) {
+	return defmag * s;
+	//return -defmag;
+}
+
+void Reference_Configuration::set_deformation_param(double lambda){
+	defmag = lambda;
+}
+
+void Reference_Configuration::set_R0(double Rtemp){
+	R0 = Rtemp;
+}
+
+Tensor<2,2> Reference_Configuration::get_Covariant_Metric(){
+
+	return Cov;
+}
+
+Tensor<2,2> Reference_Configuration::get_Covariant_2Form(){
+
+
+	return Form2;
+}
+
+double Reference_Configuration::get_R(){
+	return Rval;
+}
+
+double Reference_Configuration::get_phi(){
+	return phifun(S_Point);
+}
+
+double Reference_Configuration::get_dphi(){
+	return dphifun(S_Point);
+}

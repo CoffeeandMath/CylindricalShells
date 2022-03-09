@@ -6,23 +6,23 @@ from numpy import random
 import pandas as pd
 
 
-index = 550
+index = 505
 
-vrdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vr_' + str(index) + '.csv')
+vrdata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/vr_' + str(index) + '.csv')
 vrsorted = vrdata.sort_values('S')
-vthetadata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vtheta_'  + str(index) + '.csv')
+vthetadata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/vtheta_'  + str(index) + '.csv')
 vthetasorted = vthetadata.sort_values('S')
-vzdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/vz_' + str(index) + '.csv')
+vzdata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/vz_' + str(index) + '.csv')
 vzsorted = vzdata.sort_values('S')
 
 vd = {'S':vrsorted['S'],'r':vrsorted['val'],'theta':vthetasorted['val'],'z':vzsorted['val']}
 vn = pd.DataFrame(data=vd)
 
-wrdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/wr_' + str(index) + '.csv')
+wrdata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/wr_' + str(index) + '.csv')
 wrsorted = wrdata.sort_values('S')
-wthetadata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/wtheta_'  + str(index) + '.csv')
+wthetadata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/wtheta_'  + str(index) + '.csv')
 wthetasorted = wthetadata.sort_values('S')
-wzdata = pd.read_csv('Cylindrical3DStability/build/unstablemodes/wz_' + str(index) + '.csv')
+wzdata = pd.read_csv('Cylindrical3DStability (copy)/build/unstablemodes/wz_' + str(index) + '.csv')
 wzsorted = wzdata.sort_values('S')
 
 wd = {'S':wrsorted['S'],'r':wrsorted['val'],'theta':wthetasorted['val'],'z':wzsorted['val']}
@@ -43,7 +43,7 @@ uxn = np.outer(vn['r'],np.multiply(np.cos(th),np.cos(nf*th))) - np.outer(vn['the
 uyn = np.outer(vn['r'],np.multiply(np.sin(th),np.cos(nf*th))) + np.outer(vn['theta'],np.multiply(np.cos(th),np.cos(nf*th))) + np.outer(wn['r'],np.multiply(np.sin(th),np.sin(nf*th))) + np.outer(wn['theta'],np.multiply(np.cos(th),np.sin(nf*th)))
 uzn = np.outer(vn['z'],np.cos(nf*th)) + np.outer(wn['z'],np.sin(nf*th))
 
-defmag = 3000.0
+defmag = .00050
 xxn = np.outer(xr, np.cos(th)) + defmag*uxn
 xyn = np.outer(xr, np.sin(th)) + defmag*uyn
 xzn = np.outer(xz,np.linspace(1.,1.,th.size)) + defmag*uzn

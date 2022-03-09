@@ -1,0 +1,2 @@
+/usr/bin/ar qc libhmatrix.a  CMakeFiles/hmatrix.dir/hazel/src/Matrix.cpp.o
+/usr/bin/ranlib libhmatrix.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libdofhandler.a  CMakeFiles/dofhandler.dir/src/DOFHandler.cpp.o
+/usr/bin/ranlib libdofhandler.a

@@ -56,7 +56,7 @@ evalasymdata = [None] * nevals;
 ax2[0].plot(normalize(evalsymdata,normalized), color = color)
 ax2[0].title.set_text(str(0))
 for i in range(1,nevals+1):
-	evtemp = pd.read_csv('Cylindrical3DStability/build/evals'+str(i)+'.csv').values
+	evtemp = pd.read_csv('Cylindrical3DStability (copy)/build/evals'+str(i)+'.csv').values
 	jstart = 1
 	ax2[i].title.set_text(str(i))
 	if i==1:
@@ -75,12 +75,12 @@ for i in range(nevals+1):
 	ax2[i].ticklabel_format(axis='both', style='sci', scilimits=(0,0))
 
 refinelevel = 5.
-axsc = 1000.*pow(2.,-1.*refinelevel)
-ax2[0].set_ylim([axsc*-1.e-5,axsc*5.e-4])
-ax2[1].set_ylim([axsc*-7.5e-3 ,axsc*3.e-2])
-ax2[2].set_ylim([axsc*-5.e-2,axsc*5.e-1])
-ax2[3].set_ylim([axsc*-5.e-1,axsc*2.5e0])
-ax2[4].set_ylim([axsc*-5.e-1,axsc*2.e1])
+axsc = 10000.*pow(2.,-1.*refinelevel)
+ax2[0].set_ylim([axsc*-1.e-7,axsc*5.e-6])
+ax2[1].set_ylim([axsc*-7.5e-8 ,axsc*9.e-5])
+ax2[2].set_ylim([axsc*-5.e-7,axsc*5.e-6])
+ax2[3].set_ylim([axsc*-5.e-7,axsc*2.5e-6])
+ax2[4].set_ylim([axsc*-5.e-7,axsc*2.e-6])
 ax2[5].set_ylim([axsc*-5.e-0,axsc* 5.e1])
 fig2.suptitle("Fourier Mode Stability")
 fig2.set_size_inches(20., 3.)

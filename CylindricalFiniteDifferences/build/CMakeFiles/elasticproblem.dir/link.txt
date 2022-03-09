@@ -1,0 +1,2 @@
+/usr/bin/ar qc libelasticproblem.a  CMakeFiles/elasticproblem.dir/src/ElasticProblem.cpp.o
+/usr/bin/ranlib libelasticproblem.a

@@ -1,0 +1,13 @@
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/edit_cache.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/run.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/hmatrix.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/rebuild_cache.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/hvector.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/elasticproblem.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/lc.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/distclean.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/material.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/reference.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/element.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/dofhandler.dir
+/home/kevin/Documents/Research/CylindricalShells/CylindricalFiniteDifferences/build/CMakeFiles/node.dir

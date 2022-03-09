@@ -72,6 +72,7 @@ private:
 	template<typename T>
 	void vector_to_csv(std::vector<T> & , std::string );
 	void assemble_constraint_system();
+
 	void output_stability_matrices(int);
 	void save_current_state(unsigned int, bool);
 	void exportdata(std::string);
@@ -80,6 +81,7 @@ private:
 	double BilinearProduct(const Tensor<2,2> &, const Tensor<4,2> &, const Tensor<2,2> &);
 	Vector<double> calculate_stability();
 	void save_eigenvalues(std::vector<Vector<double>>);
+
 
 	Triangulation<DIM> triangulation;
 	FESystem<DIM>          fe;
@@ -112,7 +114,7 @@ private:
 	double z0 = 0.;
 	double r0 = .10;
 	double Smax = 1.0;
-	int refinelevel = 5;
+	int refinelevel = 6;
 
 
 	double Emodv = 1.0e-1;

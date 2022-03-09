@@ -1,0 +1,2 @@
+/usr/bin/ar qc libhvector.a  CMakeFiles/hvector.dir/hazel/src/Vector.cpp.o
+/usr/bin/ranlib libhvector.a
