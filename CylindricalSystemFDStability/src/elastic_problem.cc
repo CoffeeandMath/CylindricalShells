@@ -125,8 +125,8 @@ void ElasticProblem::solve_path(){
 			evalsall[cnt] = calculate_stability();
 			save_eigenvalues(evalsall);
 		}
-		calculate_fd_stability();
-		//calculate_fd_fourier_stability(1.);
+		//calculate_fd_stability();
+		calculate_fd_fourier_stability((double) 3.);
 		output_data_csv_iterative("solutions",cnt);
 		save_current_state(cnt, (cnt==0));
 
@@ -197,8 +197,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																																																																																																																					<< std::endl << "   Total number of cells: "
-																																																																																																																																																																																					<< triangulation.n_cells() << std::endl;
+																																																																																																																																																																																							<< std::endl << "   Total number of cells: "
+																																																																																																																																																																																							<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -1226,8 +1226,7 @@ Tensor<2,2> ElasticProblem::calcDDf(const Tensor<1,2> & u, const Tensor<1,2> & u
 
 void ElasticProblem::calculate_fd_stability(){
 	extract_and_sort_values();
-	//Real=0,Testcase,Slopecase,TaylorExpansioncase
-	BoundaryConditions m_BC = Real;
+
 
 	const int Ndof = 2;
 	std::vector<double> Si(rvals.size());
@@ -1266,15 +1265,13 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 
-	//upp[rvals.size()-1] = (up[rvals.size()-1] - up[rvals.size()-2])/dl;
-	//upp[rvals.size()-1] = (11.*up[rvals.size()-1]/6. - 3.*up[rvals.size()-2] + 1.5*up[rvals.size()-3] - up[rvals.size()-4]/3.)/dl;
-	//upp[rvals.size()-1] = 2.*upp[rvals.size()-2] - upp[rvals.size()-3];
+
 	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
 	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
 	for (int i = 0; i < upp.size(); i++){
 		std::cout << upp[i] << std::endl;
 	}
-	//std::cin.get();
+
 
 	for (int i = 0; i < rvals.size(); i++){
 		f00[i] = calcDDf(u[i], up[i], upp[i], 0, 0, i);
@@ -1288,30 +1285,33 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 	}
-	Tensor<2,Ndof> Zero2D;
+	Tensor<2,Ndof> Zero;
 	int zeropad = 1;
 	for (int i = 0; i < zeropad; i++){
-		f00[i] = Zero2D;
-		f01[i] = Zero2D;
-		f02[i] = Zero2D;
-		f11[i] = Zero2D;
-		f12[i] = Zero2D;
-		f22[i] = Zero2D;
+		f00[i] = Zero;
+		f01[i] = Zero;
+		f02[i] = Zero;
+		f11[i] = Zero;
+		f12[i] = Zero;
+		f22[i] = Zero;
 
 
-		f00[rvals.size() - i - 1] = Zero2D;
-		f01[rvals.size() - i - 1] = Zero2D;
-		f02[rvals.size() - i - 1] = Zero2D;
-		f11[rvals.size() - i - 1] = Zero2D;
-		f12[rvals.size() - i - 1] = Zero2D;
-		f22[rvals.size() - i - 1] = Zero2D;
+		f00[rvals.size() - i - 1] = Zero;
+		f01[rvals.size() - i - 1] = Zero;
+		f02[rvals.size() - i - 1] = Zero;
+		f11[rvals.size() - i - 1] = Zero;
+		f12[rvals.size() - i - 1] = Zero;
+		f22[rvals.size() - i - 1] = Zero;
 
 		//std::cout << f00[i][0][0] << "," << f00[i][0][1] << "," << f00[i][1][1] << "," << std::endl;
 	}
 
 
 
-	Tensor<2,2> Iden2D; Iden2D[0][0] = 1.; Iden2D[1][1] = 1.;
+	Tensor<2,Ndof> Iden;
+	for (int i = 0; i < Ndof; i++){
+		Iden[i][i] = 1.;
+	}
 	// We will also need f11 defined on the half nodes
 	std::vector<Tensor<2,Ndof>> f11ext(Ndof*rvals.size()-1);
 
@@ -1319,27 +1319,20 @@ void ElasticProblem::calculate_fd_stability(){
 		if (i%2==0){
 			f11ext[i] = f11[i/2];
 		} else {
-			//f11ext[i] = (f11[i/2] + f11[i/2 + 1])/2.;
+
 			f11ext[i] = calcDDf(0.5*(u[i/2]+u[i/2 + 1]),0.5*(up[i/2]+up[i/2 + 1]),0.5*(upp[i/2]+upp[i/2 + 1]),1,1,i/2);
 		}
-		//std::cout << f11ext[i][0][0] << std::endl;
+
 
 	}
 
 	for (int i = 0; i < 2*zeropad; i++){
-		f11ext[i] = Zero2D;
-		f11ext[f11ext.size() - i - 1] = Zero2D;
+		f11ext[i] = Zero;
+		f11ext[f11ext.size() - i - 1] = Zero;
 	}
 
 
-	/*
-	for (int i = 0; i < f11ext.size(); i++){
-		std::cout << f11ext[i][0][0] << ", " << f11ext[i][0][1] << std::endl;
-		std::cout << f11ext[i][1][0] << ", " << f11ext[i][1][1] << std::endl;
-		std::cout << "-------------------" << std::endl;
-	}
-	 */
-	//std::cin.get();
+
 
 	//I now want to construct the local hessians. I will deal with boundary nodes later
 	// the structure will be a vector of tensors at every node, where the vector is the local
@@ -1384,17 +1377,17 @@ void ElasticProblem::calculate_fd_stability(){
 		DDf22wpp[i][4] = f22[i+1]/pow(dl,4);
 
 
-		DDf21wp[i][0] = -0.5*(transpose2D(f12[i-1])/pow(dl,3));
-		DDf21wp[i][1] = transpose2D(f12[i])/pow(dl,3);
+		DDf21wp[i][0] = -0.5*(transpose(f12[i-1])/pow(dl,3));
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
 		Tensor<2,Ndof> f12difftemp = f12[i-1] - f12[i+1];
-		DDf21wp[i][2] = 0.5*(transpose2D(f12difftemp))/pow(dl,3);
-		DDf21wp[i][3] = -transpose2D(f12[i])/pow(dl,3);
-		DDf21wp[i][4] = 0.5*(transpose2D(f12[i+1]))/pow(dl,3);
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
+		DDf21wp[i][4] = 0.5*(transpose(f12[i+1]))/pow(dl,3);
 
 
-		DDf20w[i][1] = transpose2D(f02[i-1])/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose2D(f02[i])/pow(dl,2);
-		DDf20w[i][3] = transpose2D(f02[i+1])/pow(dl,2);
+		DDf20w[i][1] = transpose(f02[i-1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
+		DDf20w[i][3] = transpose(f02[i+1])/pow(dl,2);
 
 
 		Df12wpp[i][0] = -0.5*f12[i-1]/pow(dl,3);
@@ -1411,8 +1404,8 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 
-		Df10w[i][1] = -0.5*transpose2D(f01[i-1])/dl;
-		Df10w[i][3] = 0.5*transpose2D(f01[i+1])/dl;
+		Df10w[i][1] = -0.5*transpose(f01[i-1])/dl;
+		Df10w[i][3] = 0.5*transpose(f01[i+1])/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -1432,11 +1425,11 @@ void ElasticProblem::calculate_fd_stability(){
 	//Dealing with boundary conditions. for now I will use both bcs from integration by parts
 	//beginning with 0 boundary
 
-	Tensor<2,Ndof> f20m1 = 0.*(2.*transpose2D(f02[0]) - transpose2D(f02[1]));
-	Tensor<2,Ndof> f21m1 = 0.*(2.*transpose2D(f12[0]) - transpose2D(f12[1]));
+	Tensor<2,Ndof> f20m1 = 0.*(2.*transpose(f02[0]) - transpose(f02[1]));
+	Tensor<2,Ndof> f21m1 = 0.*(2.*transpose(f12[0]) - transpose(f12[1]));
 	Tensor<2,Ndof> f11m1 = 0.*(2.*f11[0] - f11[1]);
-	Tensor<2,Ndof> f21m1_2 = 0.*(0.5*(f21m1 + transpose2D(f12[0])));
-	Tensor<2,Ndof> f21p1_2 = calcDDf(0.5*(u[0]+u[1]),0.5*(up[0]+up[1]),0.5*(upp[0]+upp[1]),2,1,1);
+	Tensor<2,Ndof> f21m1_2 = 0.*(0.5*(f21m1 + transpose(f12[0])));
+	Tensor<2,Ndof> f21p1_2 = 0.*calcDDf(0.5*(u[0]+u[1]),0.5*(up[0]+up[1]),0.5*(upp[0]+upp[1]),2,1,1);
 	Tensor<2,Ndof> f22m1 = 0.*(2.*f22[0] - f22[1]);
 	Tensor<2,Ndof> f01m1 = 0.*(2.*f01[0] - f01[1]);
 
@@ -1449,7 +1442,7 @@ void ElasticProblem::calculate_fd_stability(){
 
 	std::vector<Tensor<2,Ndof>> Df20w0(3);
 	Df20w0[0] = -.5*f20m1/dl;
-	Df20w0[2] = .5*transpose2D(f02[1])/dl;
+	Df20w0[2] = .5*transpose(f02[1])/dl;
 
 	std::vector<Tensor<2,Ndof>> Df22wpp0(5);
 	Df22wpp0[0] = -0.5*f22m1/pow(dl,3);
@@ -1474,16 +1467,16 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 		DDf21wp[i][0] = -0.5*f21m1/pow(dl,3);
-		DDf21wp[i][1] = transpose2D(f12[i])/pow(dl,3);
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
 		Tensor<2,Ndof> f12difftemp = f21m1 - f12[i+1];
-		DDf21wp[i][2] = 0.5*(transpose2D(f12difftemp))/pow(dl,3);
-		DDf21wp[i][3] = -transpose2D(f12[i])/pow(dl,3);
-		DDf21wp[i][4] = 0.5*(transpose2D(f12[i+1]))/pow(dl,3);
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
+		DDf21wp[i][4] = 0.5*(transpose(f12[i+1]))/pow(dl,3);
 
 
 		DDf20w[i][1] = f20m1/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose2D(f02[i])/pow(dl,2);
-		DDf20w[i][3] = transpose2D(f02[i+1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
+		DDf20w[i][3] = transpose(f02[i+1])/pow(dl,2);
 
 
 		Df12wpp[i][0] = -0.5*f21m1/pow(dl,3);
@@ -1498,8 +1491,8 @@ void ElasticProblem::calculate_fd_stability(){
 		Df11wp[i][3] = f11ext[2*i+1]/pow(dl,2);
 
 
-		Df10w[i][1] = -0.5*transpose2D(f01m1)/dl;
-		Df10w[i][3] = 0.5*transpose2D(f01[i+1])/dl;
+		Df10w[i][1] = -0.5*transpose(f01m1)/dl;
+		Df10w[i][3] = 0.5*transpose(f01[i+1])/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -1520,32 +1513,14 @@ void ElasticProblem::calculate_fd_stability(){
 	int Nend = rvals.size();
 
 
-	Tensor<2,Ndof> f20Np1 = 0.*(2.*transpose2D(f02[Nend-1]) - transpose2D(f02[Nend-2]));
-	Tensor<2,Ndof> f21Np1 = 0.*(2.*transpose2D(f12[Nend-1]) - transpose2D(f12[Nend-2]));
+	Tensor<2,Ndof> f20Np1 = 0.*(2.*transpose(f02[Nend-1]) - transpose(f02[Nend-2]));
+	Tensor<2,Ndof> f21Np1 = 0.*(2.*transpose(f12[Nend-1]) - transpose(f12[Nend-2]));
 	Tensor<2,Ndof> f11Np1 = 0.*(2.*f11[Nend-1] - f11[Nend-2]);
-	Tensor<2,Ndof> f21Np1_2 = 0.*(0.5*(f21Np1 + transpose2D(f12[Nend-1])));
-	Tensor<2,Ndof> f21Nm1_2 = calcDDf(0.5*(u[Nend-2]+u[Nend-1]),0.5*(up[Nend-2]+up[Nend-1]),0.5*(upp[Nend-2]+upp[Nend-1]),2,1,Nend-1);
+	Tensor<2,Ndof> f21Np1_2 = 0.*(0.5*(f21Np1 + transpose(f12[Nend-1])));
+	Tensor<2,Ndof> f21Nm1_2 = 0.*calcDDf(0.5*(u[Nend-2]+u[Nend-1]),0.5*(up[Nend-2]+up[Nend-1]),0.5*(upp[Nend-2]+upp[Nend-1]),2,1,Nend-1);
 	Tensor<2,Ndof> f22Np1 = 0.*(2.*f22[Nend-1] - f22[Nend-2]);
 	Tensor<2,Ndof> f01Np1 = 0.*(2.*f01[Nend-1] - f01[Nend-2]);
 
-
-
-
-	std::vector<Tensor<2,Ndof>> Df21wpN(3);
-	Df21wpN[0] = f21Nm1_2/pow(dl,2);
-	Df21wpN[1] = -1.0*(f21Nm1_2 + f21Np1_2)/pow(dl,2);
-	Df21wpN[2] = f21Np1_2/pow(dl,2);
-
-	std::vector<Tensor<2,Ndof>> Df20wN(3);
-	Df20wN[0] = -.5*transpose2D(f02[Nend-1])/dl;
-	Df20wN[2] = .5*f20Np1/dl;
-
-	std::vector<Tensor<2,Ndof>> Df22wppN(5);
-	Df22wppN[0] = -0.5*f22[Nend-2]/pow(dl,3);
-	Df22wppN[1] = f22[Nend-2]/pow(dl,3);
-	Df22wppN[2] = 0.5*(f22Np1 - f22[Nend-2])/pow(dl,3);
-	Df22wppN[3] = -f22Np1/pow(dl,3);
-	Df22wppN[4] = 0.5*f22Np1/pow(dl,3);
 
 
 	//finding el equations for the N boundaries
@@ -1560,25 +1535,25 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 		//this one has a problem
-		DDf21wp[i][0] = -0.5*(transpose2D(f12[i-1])/pow(dl,3));
-		DDf21wp[i][1] = transpose2D(f12[i])/pow(dl,3);
-		Tensor<2,Ndof> f12difftemp = f12[i-1] - transpose2D(f21Np1);
-		DDf21wp[i][2] = 0.5*(transpose2D(f12difftemp))/pow(dl,3);
-		DDf21wp[i][3] = -transpose2D(f12[i])/pow(dl,3);
+		DDf21wp[i][0] = -0.5*(transpose(f12[i-1])/pow(dl,3));
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
+		Tensor<2,Ndof> f12difftemp = f12[i-1] - transpose(f21Np1);
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
 		DDf21wp[i][4] = 0.5*(f21Np1)/pow(dl,3);
 
 
 
-		DDf20w[i][1] = transpose2D(f02[i-1])/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose2D(f02[i])/pow(dl,2);
+		DDf20w[i][1] = transpose(f02[i-1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
 		DDf20w[i][3] = f20Np1/pow(dl,2);
 
 
 		Df12wpp[i][0] = -0.5*f12[i-1]/pow(dl,3);
 		Df12wpp[i][1] = f12[i-1]/pow(dl,3);
-		Df12wpp[i][2] = 0.5*(transpose2D(f21Np1)-f12[i-1])/pow(dl,3);
-		Df12wpp[i][3] = -transpose2D(f21Np1)/pow(dl,3);
-		Df12wpp[i][4] = 0.5*transpose2D(f21Np1)/pow(dl,3);
+		Df12wpp[i][2] = 0.5*(transpose(f21Np1)-f12[i-1])/pow(dl,3);
+		Df12wpp[i][3] = -transpose(f21Np1)/pow(dl,3);
+		Df12wpp[i][4] = 0.5*transpose(f21Np1)/pow(dl,3);
 
 		Df11wp[i][1] = f11ext[2*i-1]/pow(dl,2);
 		Tensor<2,Ndof> f11Np1_2 = 0.0*0.5*(f11[i] + f11Np1);
@@ -1586,8 +1561,8 @@ void ElasticProblem::calculate_fd_stability(){
 		Df11wp[i][3] = f11Np1_2/pow(dl,2);
 
 
-		Df10w[i][1] = -0.5*transpose2D(f01[i-1])/dl;
-		Df10w[i][3] = 0.5*transpose2D(f01Np1)/dl;
+		Df10w[i][1] = -0.5*transpose(f01[i-1])/dl;
+		Df10w[i][3] = 0.5*transpose(f01Np1)/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -1601,305 +1576,7 @@ void ElasticProblem::calculate_fd_stability(){
 
 		f00w[i][2] = f00[i];
 
-		/*
 
-		 */
-	}
-
-
-	std::vector<Tensor<2,Ndof>> BC0_1(3);
-	std::vector<Tensor<2,Ndof>> BC0_2(5);
-
-	std::vector<Tensor<2,Ndof>> BCN_1(3);
-	std::vector<Tensor<2,Ndof>> BCN_2(5);
-
-
-
-	if (m_BC == Real){
-		// Boundary conditions at S0
-
-		std::vector<Tensor<2,Ndof>> wpp0(3);
-		wpp0[0] = Iden2D/pow(dl,2);
-		wpp0[1] = -2.*Iden2D/pow(dl,2);
-		wpp0[2] = Iden2D/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> wp0(3);
-		wp0[0] = -1.*Iden2D/(2.*dl);
-		wp0[2] = Iden2D/(2.*dl);
-
-		std::vector<Tensor<2,Ndof>> w0(3);
-		w0[1] = Iden2D;
-
-
-		BC0_1[0] = f22[0]*wpp0[0]/pow(dl,2) + transpose2D(f12[0])*wp0[0]/pow(dl,2) + transpose2D(f02[0])*w0[0]/pow(dl,2)
-																-f12[0]*wpp0[0]/(2.*dl) - transpose2D(f01[0])*w0[0]/(2.*dl);
-		BC0_1[1] = f22[0]*wpp0[1]/pow(dl,2) + transpose2D(f12[0])*wp0[1]/pow(dl,2) + transpose2D(f02[0])*w0[1]/pow(dl,2)
-																-f12[0]*wpp0[1]/(2.*dl) - transpose2D(f01[0])*w0[1]/(2.*dl);
-		BC0_1[2] = f22[0]*wpp0[2]/pow(dl,2) + transpose2D(f12[0])*wp0[2]/pow(dl,2) + transpose2D(f02[0])*w0[2]/pow(dl,2)
-																-f12[0]*wpp0[2]/(2.*dl) - transpose2D(f01[0])*w0[2]/(2.*dl);
-
-		/*
-		BC0_1[0] = f22[0]/pow(dl,2) - 0.5*transpose2D(f12[0])/dl;
-		BC0_1[1] = -2.*f22[0]/pow(dl,2) + transpose2D(f02[0]);
-		BC0_1[2] = f22[0]/pow(dl,2) + 0.5*transpose2D(f12[0])/dl;
-		 */
-		BC0_2[0] = -Df22wpp0[0];
-		BC0_2[1] = -Df22wpp0[1] -Df21wp0[0] -Df20w0[0] + f12[0]/pow(dl,2) - 0.5*f11[0]/dl;
-		BC0_2[2] = -Df22wpp0[2] -Df21wp0[1] -Df20w0[1] -2.*f12[0]/pow(dl,2) + transpose2D(f01[0]);
-		BC0_2[3] = -Df22wpp0[3] -Df21wp0[2] -Df20w0[2] + f12[0]/pow(dl,2) + 0.5*f11[0]/dl;
-		BC0_2[4] = -Df22wpp0[4];
-
-		// Boundary conditions at SL
-		std::vector<Tensor<2,Ndof>> wppN(3);
-		wppN[0] = Iden2D/pow(dl,2);
-		wppN[1] = -2.*Iden2D/pow(dl,2);
-		wppN[2] = Iden2D/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> wpN(3);
-		wpN[0] = -1.*Iden2D/(2.*dl);
-		wpN[2] = Iden2D/(2.*dl);
-
-		std::vector<Tensor<2,Ndof>> wN(3);
-		wN[1] = Iden2D;
-
-		BCN_1[0] = f22[Nend-1]*wppN[0]/pow(dl,2) + transpose2D(f12[Nend-1])*wpN[0]/pow(dl,2) + transpose2D(f02[Nend-1])*wN[0]/pow(dl,2)
-																		-f12[Nend-1]*wppN[0]/(2.*dl) - transpose2D(f01[Nend-1])*wN[0]/(2.*dl);
-		BCN_1[1] = f22[Nend-1]*wppN[1]/pow(dl,2) + transpose2D(f12[Nend-1])*wpN[1]/pow(dl,2) + transpose2D(f02[Nend-1])*wN[1]/pow(dl,2)
-																		-f12[Nend-1]*wppN[1]/(2.*dl) - transpose2D(f01[Nend-1])*wN[1]/(2.*dl);
-		BCN_1[2] = f22[Nend-1]*wppN[2]/pow(dl,2) + transpose2D(f12[Nend-1])*wpN[2]/pow(dl,2) + transpose2D(f02[Nend-1])*wN[2]/pow(dl,2)
-																		-f12[Nend-1]*wppN[2]/(2.*dl) - transpose2D(f01[Nend-1])*wN[2]/(2.*dl);
-		/*
-		BCN_1[0] = f22[Nend-1]/pow(dl,2) - 0.5*transpose2D(f12[Nend-1])/dl;
-		BCN_1[1] = -2.*f22[Nend-1]/pow(dl,2) + transpose2D(f02[Nend-1]);
-		BCN_1[2] = f22[Nend-1]/pow(dl,2) + 0.5*transpose2D(f12[Nend-1])/dl;
-
-
-		BCN_2[0] = -Df22wppN[0];
-		BCN_2[1] = -Df22wppN[1] -Df21wpN[0] -Df20wN[0] + f12[Nend-1]/pow(dl,2) - 0.5*f11[Nend-1]/dl;
-		BCN_2[2] = -Df22wppN[2] -Df21wpN[1] -Df20wN[1] -2.*f12[Nend-1]/pow(dl,2) + transpose2D(f01[Nend-1]);
-		BCN_2[3] = -Df22wppN[3] -Df21wpN[2] -Df20wN[2] + f12[Nend-1]/pow(dl,2) + 0.5*f11[Nend-1]/dl;
-		BCN_2[4] = -Df22wppN[4];
-		 */
-
-		bool replacewith3rdorder = false;
-
-		if (replacewith3rdorder){
-			BC0_2[0] = -0.5*Iden2D;
-			BC0_2[1] = Iden2D;
-			BC0_2[2] = 0.*Iden2D;
-			BC0_2[3] = -1.*Iden2D;
-			BC0_2[4] = 0.5*Iden2D;
-
-			BCN_2[0] = -0.5*Iden2D;
-			BCN_2[1] = Iden2D;
-			BCN_2[2] = 0.*Iden2D;
-			BCN_2[3] = -1.*Iden2D;
-			BCN_2[4] = 0.5*Iden2D;
-		}
-
-
-	} else if (m_BC == Testcase){
-		// Boundary conditions at S0
-		BC0_1[0] = Iden2D/pow(dl,2);
-		BC0_1[1] = -2.*Iden2D/pow(dl,2);
-		BC0_1[2] = Iden2D/pow(dl,2);
-
-		BC0_2[0] = -0.5*Iden2D/pow(dl,3);
-		BC0_2[1] = Iden2D/pow(dl,3);
-		BC0_2[2] = 0.*Iden2D;
-		BC0_2[3] = -1.*Iden2D/pow(dl,3);
-		BC0_2[4] = 0.5*Iden2D/pow(dl,3);
-		// Boundary conditions at SL
-		BCN_1[0] = Iden2D/pow(dl,2);
-		BCN_1[1] = -2.*Iden2D/pow(dl,2);
-		BCN_1[2] = Iden2D/pow(dl,2);
-
-		BCN_2[0] = -0.5*Iden2D/pow(dl,3);
-		BCN_2[1] = Iden2D/pow(dl,3);
-		BCN_2[2] = 0.*Iden2D;
-		BCN_2[3] = -1.*Iden2D/pow(dl,3);
-		BCN_2[4] = 0.5*Iden2D/pow(dl,3);
-
-	} else if (m_BC == Slopecase){
-		// Boundary conditions at S0
-		BC0_1[0] = -0.5*Iden2D/dl;
-		BC0_1[1] = 0.*Iden2D/dl;
-		BC0_1[2] = 0.5*Iden2D/dl;
-
-		BC0_2[0] = -0.0*Iden2D;
-		BC0_2[1] = Iden2D/pow(dl,2);
-		BC0_2[2] = -2.*Iden2D/pow(dl,2);
-		BC0_2[3] = Iden2D/pow(dl,2);
-		BC0_2[4] = 0.0*Iden2D;
-		// Boundary conditions at SL
-		BCN_1[0] = -0.5*Iden2D/dl;
-		BCN_1[1] = -0.*Iden2D/dl;
-		BCN_1[2] = 0.5*Iden2D/dl;
-
-		BCN_2[0] = 0.*Iden2D;
-		BCN_2[1] = Iden2D/pow(dl,2);
-		BCN_2[2] = -2.*Iden2D/pow(dl,2);
-		BCN_2[3] = Iden2D/pow(dl,2);
-		BCN_2[4] = 0.*Iden2D;
-	} else if (m_BC ==TaylorExpansioncase) {
-		int index = 0;
-		BC0_1[0] = 						-0.5*transpose2D(f12[index])/dl	+ f22[index]/pow(dl,2);
-		BC0_1[1] = transpose2D(f02[index]) 								- 2.*f22[index]/pow(dl,2) ;
-		BC0_1[2] = 						0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g2S1(3);
-		index = 1;
-		g2S1[0] = 						-0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-		g2S1[1] = transpose2D(f02[index]) 									- 2.*f22[index]/pow(dl,2);
-		g2S1[2] = 						0.5*transpose2D(f12[index])/dl 		+f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S1(3);
-		index = 1;
-		g1S1[0] = 						-0.5*f11[index]/dl 		+ f12[index]/pow(dl,2);
-		g1S1[1] = transpose2D(f01[index]) 						-2. * f12[index]/pow(dl,2);
-		g1S1[2] = 						0.5*f11[index]/dl 		+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S0(3);
-		index = 0;
-		g1S0[0] = 						-0.5*f11[index]/dl 	+ f12[index]/pow(dl,2);
-		g1S0[1] = transpose2D(f01[index]) 					-2. * f12[index]/pow(dl,2);
-		g1S0[2] = 						0.5*f11[index]/dl 	+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g0S0(3);
-		index = 0;
-		g0S0[0] = 			-0.5*f01[index]/dl	+ f02[index]/pow(dl,2);
-		g0S0[1] = f00[index] 					- 2.*f02[index]/pow(dl,2);
-		g0S0[2] = 			0.5*f01[index]/dl 	+ f02[index]/pow(dl,2);
-
-		BC0_2[0] = -0.0*Iden2D;
-		BC0_2[1] = g0S0[0] - g1S0[0]/dl;
-		BC0_2[2] = g0S0[1] - g1S0[1]/dl - g1S1[0]/dl + 2.*g2S1[0]/pow(dl,2);
-		BC0_2[3] = g0S0[2] - g1S0[2]/dl - g1S1[1]/dl + 2.*g2S1[1]/pow(dl,2);
-		BC0_2[4] = 						- g1S1[2]/dl + 2.*g2S1[2]/pow(dl,2);
-		// Boundary conditions at SL
-
-		index = rvals.size()-1;
-		BCN_1[0] = 									-0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-		BCN_1[1] = transpose2D(f02[index]) 											- 2.*f22[index]/pow(dl,2);
-		BCN_1[2] = 									0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g2S1N(3);
-		index = rvals.size()-2;
-		g2S1N[0] = 									-0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-		g2S1N[1] = transpose2D(f02[index]) 											- 2.*f22[index]/pow(dl,2);
-		g2S1N[2] = 									0.5*transpose2D(f12[index])/dl 	+f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S1N(3);
-		index = rvals.size()-2;
-		g1S1N[0] = 									-0.5*f11[index]/dl		+ f12[index]/pow(dl,2);
-		g1S1N[1] = transpose2D(f01[index]) 								-2. * f12[index]/pow(dl,2);
-		g1S1N[2] = 									0.5*f11[index]/dl 		+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S0N(3);
-		index = rvals.size()-1;
-		g1S0N[0] = 							-0.5*f11[index]/dl + f12[index]/pow(dl,2);
-		g1S0N[1] = transpose2D(f01[index]) 						-2. * f12[index]/pow(dl,2);
-		g1S0N[2] = 							0.5*f11[index]/dl	+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g0S0N(3);
-		index = rvals.size()-1;
-		g0S0N[0] = 						-0.5*f01[index]/dl 		+ f02[index]/pow(dl,2);
-		g0S0N[1] = f00[index] 									- 2.*f02[index]/pow(dl,2);
-		g0S0N[2] = 						0.5*f01[index]/dl	 	+ f02[index]/pow(dl,2);
-
-		BCN_2[0] = 								g1S1N[0]/dl		+ 2.*g2S1N[0]/pow(dl,2);
-		BCN_2[1] = g0S0N[0] + 	g1S0N[0]/dl 	+ g1S1N[1]/dl 	+ 2.*g2S1N[1]/pow(dl,2);
-		BCN_2[2] = g0S0N[1] + 	g1S0N[1]/dl 	+ g1S1N[2]/dl   + 2.*g2S1N[2]/pow(dl,2);
-		BCN_2[3] = g0S0N[2] + 	g1S0N[2]/dl ;
-		BCN_2[4] = 0.0*Iden2D;
-
-
-
-	} else if (m_BC == TaylorExpansioncase2) {
-		bool replacewithidentity = false;
-
-		int index = 0;
-
-		BC0_1[0] = 							-0.5*transpose2D(f12[index])/dl  + f22[index]/pow(dl,2);
-		BC0_1[1] = transpose2D(f02[index]) 								- 2.*f22[index]/pow(dl,2) ;
-		BC0_1[2] = 						0.5*transpose2D(f12[index])/dl 	+ f22[index]/pow(dl,2);
-
-		if (replacewithidentity){
-			BC0_1[0] = Iden2D;
-			BC0_1[1] = -2.*Iden2D;
-			BC0_1[2] = Iden2D;
-		}
-
-		std::vector<Tensor<2,Ndof>> g2S1(3);
-		index = 1;
-		g2S1[0] = 						 	-0.5*transpose2D(f12[index])/dl + f22[index]/pow(dl,2);
-		g2S1[1] = transpose2D(f02[index]) 				- 2.*f22[index]/pow(dl,2);
-		g2S1[2] = 						0.5*transpose2D(f12[index])/dl 		+f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S1(3);
-		index = 1;
-		g1S1[0] = 						 	-0.5*f11[index]/dl	+	 f12[index]/pow(dl,2);
-		g1S1[1] = transpose2D(f01[index]) 					-2. * f12[index]/pow(dl,2);
-		g1S1[2] = 						0.5*f11[index]/dl 		+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S0(3);
-		index = 0;
-		g1S0[0] = 						 -0.5 * f11[index]/dl +	 f12[index]/pow(dl,2);
-		g1S0[1] = transpose2D(f01[index]) 			 		-2. * f12[index]/pow(dl,2);
-		g1S0[2] = 						0.5*f11[index]/dl 	+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g0S0(3);
-		index = 0;
-		g0S0[0] = 					-0.5*f01[index]/dl + f02[index]/pow(dl,2);
-		g0S0[1] = f00[index] 			- 2.*f02[index]/pow(dl,2);
-		g0S0[2] = 			0.5*f01[index]/dl 	+ f02[index]/pow(dl,2);
-
-		BC0_2[0] = -0.0*Iden2D;
-		BC0_2[1] = g0S0[0] - g1S0[0]/dl;
-		BC0_2[2] = g0S0[1] - g1S0[1]/dl - g1S1[0]/dl + 2.*g2S1[0]/pow(dl,2);
-		BC0_2[3] = g0S0[2] - g1S0[2]/dl - g1S1[1]/dl + 2.*g2S1[1]/pow(dl,2);
-		BC0_2[4] = 						- g1S1[2]/dl + 2.*g2S1[2]/pow(dl,2);
-		// Boundary conditions at SL
-
-		index = rvals.size()-1;
-		BCN_1[0] = 								-0.5*transpose2D(f12[index])/dl 	+	 f22[index]/pow(dl,2);
-		BCN_1[1] = transpose2D(f02[index]) 									- 2.*f22[index]/pow(dl,2);
-		BCN_1[2] = 										0.5*transpose2D(f12[index])/dl + 	f22[index]/pow(dl,2);
-
-		if (replacewithidentity){
-			BCN_1[0] = Iden2D;
-			BCN_1[1] = -2.*Iden2D;
-			BCN_1[2] = Iden2D;
-		}
-		std::vector<Tensor<2,Ndof>> g2S1N(3);
-		index = rvals.size()-2;
-		g2S1N[0] = 								-0.5*transpose2D(f12[index])/dl+	f22[index]/pow(dl,2);
-		g2S1N[1] = transpose2D(f02[index]) 								- 2.*f22[index]/pow(dl,2);
-		g2S1N[2] = 									0.5*transpose2D(f12[index])/dl 	+f22[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S1N(3);
-		index = rvals.size()-2;
-		g1S1N[0] = 									-0.5*f11[index]/dl	+		 f12[index]/pow(dl,2);
-		g1S1N[1] = transpose2D(f01[index]) 							-2. * f12[index]/pow(dl,2);
-		g1S1N[2] = 									0.5*f11[index]/dl 		+ f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g1S0N(3);
-		index = rvals.size()-1;
-		g1S0N[0] = 							-0.5*f11[index]/dl 	+ f12[index]/pow(dl,2);
-		g1S0N[1] = transpose2D(f01[index]) 					-2. * f12[index]/pow(dl,2);
-		g1S0N[2] = 						0.5* f11[index]/dl +	 f12[index]/pow(dl,2);
-
-		std::vector<Tensor<2,Ndof>> g0S0N(3);
-		index = rvals.size()-1;
-		g0S0N[0] = 					-0.5*f01[index]/dl +	 f02[index]/pow(dl,2);
-		g0S0N[1] = f00[index] 				  					- 2.*f02[index]/pow(dl,2);
-		g0S0N[2] = 					0.5* f01[index]/dl +	 	f02[index]/pow(dl,2);
-
-		BCN_2[0] = 								g1S1N[0]/dl		+ 2.*g2S1N[0]/pow(dl,2);
-		BCN_2[1] = g0S0N[0] + 	g1S0N[0]/dl 	+ g1S1N[1]/dl 	+ 2.*g2S1N[1]/pow(dl,2);
-		BCN_2[2] = g0S0N[1] + 	g1S0N[1]/dl 	+ g1S1N[2]/dl   + 2.*g2S1N[2]/pow(dl,2);
-		BCN_2[3] = g0S0N[2] + 	g1S0N[2]/dl ;
-		BCN_2[4] = 0.0*Iden2D;
 	}
 
 
@@ -1915,11 +1592,11 @@ void ElasticProblem::calculate_fd_stability(){
 
 
 
-	LAPACKFullMatrix<double> FDHessian3;
+	LAPACKFullMatrix<double> FDHessian;
 
 
-	FDHessian3.reinit(Ndof*(rvals.size()+4),Ndof*(rvals.size()+4));
-	FDHessian3 = 0.;
+	FDHessian.reinit(Ndof*(rvals.size()+4),Ndof*(rvals.size()+4));
+	FDHessian = 0.;
 
 
 
@@ -1927,58 +1604,13 @@ void ElasticProblem::calculate_fd_stability(){
 		for (int j = 0; j < stencilsize; j++){
 			for (int k = 0; k < Ndof; k++){
 				for (int l = 0; l < Ndof; l++){
-					FDHessian3(Ndof*(i+2)+k,Ndof*(i+j)+l) = localhessian[i][j][k][l];
+					FDHessian(Ndof*(i+2)+k,Ndof*(i+j)+l) = localhessian[i][j][k][l];
 				}
 			}
 		}
 	}
-/*
-	for (int i = 0; i < BC0_1.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(j,Ndof*(1+i)+k) = BC0_1[i][j][k];
-			}
-		}
-	}
 
-	for (int i = 0; i < BC0_2.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof + j,Ndof*i+k) = BC0_2[i][j][k];
-			}
-		}
-	}
-
-	for (int i = 0; i < BCN_1.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof*(rvals.size() + 3) + j,Ndof*(rvals.size()+i)+k) = BCN_1[i][j][k];
-			}
-		}
-	}
-
-	for (int i = 0; i < BCN_2.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof*(rvals.size() + 2) + j,Ndof*(rvals.size()+i - 1)+k) = BCN_2[i][j][k];
-			}
-		}
-	}
-*/
-	//save_matrix(FDHessian);
-	save_matrix(FDHessian3);
-	/*
-	FDHessian.compute_eigenvalues(false, false);
-
-	int nevals = 2*rvals.size();
-	std::vector<double> evals(nevals);
-
-	for (int i = 0; i < nevals; i++){
-		evals[i] = FDHessian.eigenvalue(i).real();
-		std::cout << evals[i] << std::endl;
-	}
-
-	 */
+	save_matrix(FDHessian);
 
 
 }
@@ -2183,21 +1815,21 @@ Tensor<2,6> ElasticProblem::calcDDf_Fourier(const Tensor<1,2> & u, const Tensor<
 		for (int j = 0; j < 6; j++){
 			Tensor<1,3> Dj_v, Dj_w, Dj_vp, Dj_wp, Dj_vpp, Dj_wpp;
 
-			if (dir1 == 0){
+			if (dir2 == 0){
 				if (j < 3){
 					Dj_v[j] = 1.;
 				} else {
 					Dj_w[j%3] = 1.;
 				}
 
-			} else if (dir1 == 1){
+			} else if (dir2 == 1){
 				if (j < 3){
 					Dj_vp[j] = 1.;
 				} else {
 					Dj_wp[j%3] = 1.;
 				}
 
-			} else if (dir1 == 2){
+			} else if (dir2 == 2){
 				if (j < 3){
 					Dj_vpp[j] = 1.;
 				} else {
@@ -2352,8 +1984,7 @@ Tensor<2,6> ElasticProblem::calcDDf_Fourier(const Tensor<1,2> & u, const Tensor<
 
 void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 	extract_and_sort_values();
-	//Real=0,Testcase,Slopecase,TaylorExpansioncase,TaylorExpansioncase2
-	BoundaryConditions m_BC = Real;
+
 
 	const int Ndof = 6;
 	std::vector<double> Si(rvals.size());
@@ -2383,15 +2014,21 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 	double dl = Si[1] - Si[0];
 	//upp[0] = (up[1] - up[0])/dl;
-	upp[0] = -11.*up[0]/(6. * dl) + 3.*up[1]/dl - 1.5 * up[2]/dl + up[3]/(3.*dl);
+	//upp[0] = -11.*up[0]/(6. * dl) + 3.*up[1]/dl - 1.5 * up[2]/dl + up[3]/(3.*dl);
+
 	for (int i = 1; i < (rvals.size()-1); i++){
 		upp[i] = (up[i+1] - up[i-1])/(2.*dl);
 
 	}
 
 
-	//upp[rvals.size()-1] = (up[rvals.size()-1] - up[rvals.size()-2])/dl;
-	upp[rvals.size()-1] = (11.*up[rvals.size()-1]/6. - 3.*up[rvals.size()-2] + 1.5*up[rvals.size()-3] - up[rvals.size()-4]/3.)/dl;
+
+
+	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
+	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
+	for (int i = 0; i < upp.size(); i++){
+		std::cout << upp[i] << std::endl;
+	}
 
 
 	for (int i = 0; i < rvals.size(); i++){
@@ -2406,8 +2043,33 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 
 	}
+	Tensor<2,Ndof> Zero;
+	int zeropad = 1;
+	for (int i = 0; i < zeropad; i++){
+		f00[i] = Zero;
+		f01[i] = Zero;
+		f02[i] = Zero;
+		f11[i] = Zero;
+		f12[i] = Zero;
+		f22[i] = Zero;
 
-	Tensor<2,Ndof> Iden6D; Iden6D[0][0] = 1.; Iden6D[1][1] = 1.; Iden6D[2][2] = 1.; Iden6D[3][3] = 1.; Iden6D[4][4] = 1.; Iden6D[5][5] = 1.;
+
+		f00[rvals.size() - i - 1] = Zero;
+		f01[rvals.size() - i - 1] = Zero;
+		f02[rvals.size() - i - 1] = Zero;
+		f11[rvals.size() - i - 1] = Zero;
+		f12[rvals.size() - i - 1] = Zero;
+		f22[rvals.size() - i - 1] = Zero;
+
+		//std::cout << f00[i][0][0] << "," << f00[i][0][1] << "," << f00[i][1][1] << "," << std::endl;
+	}
+
+
+
+	Tensor<2,Ndof> Iden;
+	for (int i = 0; i < Ndof; i++){
+		Iden[i][i] = 1.;
+	}
 	// We will also need f11 defined on the half nodes
 	std::vector<Tensor<2,Ndof>> f11ext(Ndof*rvals.size()-1);
 
@@ -2415,12 +2077,20 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		if (i%2==0){
 			f11ext[i] = f11[i/2];
 		} else {
-			f11ext[i] = (f11[i/2] + f11[i/2 + 1])/2.;
+
+			f11ext[i] = calcDDf_Fourier(0.5*(u[i/2]+u[i/2 + 1]),0.5*(up[i/2]+up[i/2 + 1]),0.5*(upp[i/2]+upp[i/2 + 1]),1,1,i/2,fmode);
 		}
-		//std::cout << f11ext[i][0][0] << std::endl;
+
 
 	}
-	//std::cin.get();
+
+	for (int i = 0; i < 2*zeropad; i++){
+		f11ext[i] = Zero;
+		f11ext[f11ext.size() - i - 1] = Zero;
+	}
+
+
+
 
 	//I now want to construct the local hessians. I will deal with boundary nodes later
 	// the structure will be a vector of tensors at every node, where the vector is the local
@@ -2457,6 +2127,7 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 	//setting the values for interior nodes
 	for (int i = 1; i < (rvals.size() - 1); i++){
+
 		DDf22wpp[i][0] = f22[i-1]/pow(dl,4);
 		DDf22wpp[i][1] = -2.*(f22[i] + f22[i-1])/pow(dl,4);
 		DDf22wpp[i][2] = (f22[i+1] + 4.*f22[i] + f22[i-1])/pow(dl,4);
@@ -2464,17 +2135,17 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		DDf22wpp[i][4] = f22[i+1]/pow(dl,4);
 
 
-		DDf21wp[i][0] = -0.5*(transpose6D(f12[i-1])/pow(dl,3));
-		DDf21wp[i][1] = transpose6D(f12[i])/pow(dl,3);
+		DDf21wp[i][0] = -0.5*(transpose(f12[i-1])/pow(dl,3));
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
 		Tensor<2,Ndof> f12difftemp = f12[i-1] - f12[i+1];
-		DDf21wp[i][2] = 0.5*(transpose6D(f12difftemp))/pow(dl,3);
-		DDf21wp[i][3] = -transpose6D(f12[i])/pow(dl,3);
-		DDf21wp[i][4] = 0.5*(transpose6D(f12[i+1]))/pow(dl,3);
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
+		DDf21wp[i][4] = 0.5*(transpose(f12[i+1]))/pow(dl,3);
 
 
-		DDf20w[i][1] = transpose6D(f02[i-1])/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose6D(f02[i])/pow(dl,2);
-		DDf20w[i][3] = transpose6D(f02[i+1])/pow(dl,2);
+		DDf20w[i][1] = transpose(f02[i-1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
+		DDf20w[i][3] = transpose(f02[i+1])/pow(dl,2);
 
 
 		Df12wpp[i][0] = -0.5*f12[i-1]/pow(dl,3);
@@ -2483,14 +2154,16 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		Df12wpp[i][3] = -f12[i+1]/pow(dl,3);
 		Df12wpp[i][4] = 0.5*f12[i+1]/pow(dl,3);
 
-
 		Df11wp[i][1] = f11ext[2*i-1]/pow(dl,2);
 		Df11wp[i][2] = -(f11ext[2*i-1] + f11ext[2*i+1])/pow(dl,2);
 		Df11wp[i][3] = f11ext[2*i+1]/pow(dl,2);
 
 
-		Df10w[i][1] = -0.5*transpose6D(f01[i-1])/dl;
-		Df10w[i][3] = 0.5*transpose6D(f01[i+1])/dl;
+
+
+
+		Df10w[i][1] = -0.5*transpose(f01[i-1])/dl;
+		Df10w[i][3] = 0.5*transpose(f01[i+1])/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -2504,20 +2177,19 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 		f00w[i][2] = f00[i];
 
-
 	}
 
 
 	//Dealing with boundary conditions. for now I will use both bcs from integration by parts
 	//beginning with 0 boundary
 
-	Tensor<2,Ndof> f20m1 = 2.*transpose6D(f02[0]) - transpose6D(f02[1]);
-	Tensor<2,Ndof> f21m1 = 2.*transpose6D(f12[0]) - transpose6D(f12[1]);
-	Tensor<2,Ndof> f11m1 = 2.*f11[0] - f11[1];
-	Tensor<2,Ndof> f21m1_2 = 0.5*(f21m1 + transpose6D(f12[0]));
-	Tensor<2,Ndof> f21p1_2 = 0.5*(transpose6D(f12[0]) + transpose6D(f12[1]));
-	Tensor<2,Ndof> f22m1 = 2.*f22[0] - f22[1];
-	Tensor<2,Ndof> f01m1 = 2.*f01[0] - f01[1];
+	Tensor<2,Ndof> f20m1 = 0.*(2.*transpose(f02[0]) - transpose(f02[1]));
+	Tensor<2,Ndof> f21m1 = 0.*(2.*transpose(f12[0]) - transpose(f12[1]));
+	Tensor<2,Ndof> f11m1 = 0.*(2.*f11[0] - f11[1]);
+	Tensor<2,Ndof> f21m1_2 = 0.*(0.5*(f21m1 + transpose(f12[0])));
+	Tensor<2,Ndof> f21p1_2 = 0.*calcDDf_Fourier(0.5*(u[0]+u[1]),0.5*(up[0]+up[1]),0.5*(upp[0]+upp[1]),2,1,1,fmode);
+	Tensor<2,Ndof> f22m1 = 0.*(2.*f22[0] - f22[1]);
+	Tensor<2,Ndof> f01m1 = 0.*(2.*f01[0] - f01[1]);
 
 
 
@@ -2528,7 +2200,7 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 	std::vector<Tensor<2,Ndof>> Df20w0(3);
 	Df20w0[0] = -.5*f20m1/dl;
-	Df20w0[2] = .5*transpose6D(f02[1])/dl;
+	Df20w0[2] = .5*transpose(f02[1])/dl;
 
 	std::vector<Tensor<2,Ndof>> Df22wpp0(5);
 	Df22wpp0[0] = -0.5*f22m1/pow(dl,3);
@@ -2552,33 +2224,33 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		DDf22wpp[i][4] = f22[i+1]/pow(dl,4);
 
 
-		DDf21wp[i][0] = -0.5*(f21m1/pow(dl,3));
-		DDf21wp[i][1] = transpose6D(f12[i])/pow(dl,3);
-		DDf21wp[i][2] = 0.5*(f21m1 - transpose6D(f12[i+1]))/pow(dl,3);
-		DDf21wp[i][3] = -transpose6D(f12[i])/pow(dl,3);
-		DDf21wp[i][4] = 0.5*(transpose6D(f12[i+1]))/pow(dl,3);
+		DDf21wp[i][0] = -0.5*f21m1/pow(dl,3);
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
+		Tensor<2,Ndof> f12difftemp = f21m1 - f12[i+1];
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
+		DDf21wp[i][4] = 0.5*(transpose(f12[i+1]))/pow(dl,3);
 
 
 		DDf20w[i][1] = f20m1/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose6D(f02[i])/pow(dl,2);
-		DDf20w[i][3] = transpose6D(f02[i+1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
+		DDf20w[i][3] = transpose(f02[i+1])/pow(dl,2);
 
 
-		Df12wpp[i][0] = -0.5*transpose6D(f21m1)/pow(dl,3);
-		Df12wpp[i][1] = transpose6D(f21m1)/pow(dl,3);
-		Df12wpp[i][2] = 0.5*(f12[i+1]-transpose6D(f21m1))/pow(dl,3);
+		Df12wpp[i][0] = -0.5*f21m1/pow(dl,3);
+		Df12wpp[i][1] = f21m1/pow(dl,3);
+		Df12wpp[i][2] = 0.5*(f12[i+1]-f21m1)/pow(dl,3);
 		Df12wpp[i][3] = -f12[i+1]/pow(dl,3);
 		Df12wpp[i][4] = 0.5*f12[i+1]/pow(dl,3);
 
 
-		Tensor<2,Ndof> f11m1_2 = 0.5*(f11m1 + f11[0]);
-		Df11wp[i][1] = f11m1_2/pow(dl,2);
-		Df11wp[i][2] = -(f11m1_2 + f11ext[2*i+1])/pow(dl,2);
+		Df11wp[i][1] = f11m1/pow(dl,2);
+		Df11wp[i][2] = -(f11m1 + f11ext[2*i+1])/pow(dl,2);
 		Df11wp[i][3] = f11ext[2*i+1]/pow(dl,2);
 
 
-		Df10w[i][1] = -0.5*transpose6D(f01m1)/dl;
-		Df10w[i][3] = 0.5*transpose6D(f01[i+1])/dl;
+		Df10w[i][1] = -0.5*transpose(f01m1)/dl;
+		Df10w[i][3] = 0.5*transpose(f01[i+1])/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -2599,32 +2271,14 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 	int Nend = rvals.size();
 
 
-	Tensor<2,Ndof> f20Np1 = 2.*transpose6D(f02[Nend-1]) - transpose6D(f02[Nend-2]);
-	Tensor<2,Ndof> f21Np1 = 2.*transpose6D(f12[Nend-1]) - transpose6D(f12[Nend-2]);
-	Tensor<2,Ndof> f11Np1 = 2.*f11[Nend-1] - f11[Nend-2];
-	Tensor<2,Ndof> f21Np1_2 = 0.5*(f21Np1 + transpose6D(f12[Nend-1]));
-	Tensor<2,Ndof> f21Nm1_2 = 0.5*(transpose6D(f12[Nend-1]) + transpose6D(f12[Nend-2]));
-	Tensor<2,Ndof> f22Np1 = 2.*f22[Nend-1] - f22[Nend-2];
-	Tensor<2,Ndof> f01Np1 = 2.*f01[Nend-1] - f01[Nend-2];
+	Tensor<2,Ndof> f20Np1 = 0.*(2.*transpose(f02[Nend-1]) - transpose(f02[Nend-2]));
+	Tensor<2,Ndof> f21Np1 = 0.*(2.*transpose(f12[Nend-1]) - transpose(f12[Nend-2]));
+	Tensor<2,Ndof> f11Np1 = 0.*(2.*f11[Nend-1] - f11[Nend-2]);
+	Tensor<2,Ndof> f21Np1_2 = 0.*(0.5*(f21Np1 + transpose(f12[Nend-1])));
+	Tensor<2,Ndof> f21Nm1_2 = 0.*calcDDf_Fourier(0.5*(u[Nend-2]+u[Nend-1]),0.5*(up[Nend-2]+up[Nend-1]),0.5*(upp[Nend-2]+upp[Nend-1]),2,1,Nend-1,fmode);
+	Tensor<2,Ndof> f22Np1 = 0.*(2.*f22[Nend-1] - f22[Nend-2]);
+	Tensor<2,Ndof> f01Np1 = 0.*(2.*f01[Nend-1] - f01[Nend-2]);
 
-
-
-
-	std::vector<Tensor<2,Ndof>> Df21wpN(3);
-	Df21wpN[0] = f21Nm1_2/pow(dl,2);
-	Df21wpN[1] = -1.0*(f21Nm1_2 + f21Np1_2)/pow(dl,2);
-	Df21wpN[2] = f21Np1_2/pow(dl,2);
-
-	std::vector<Tensor<2,Ndof>> Df20wN(3);
-	Df20wN[0] = -.5*transpose6D(f02[Nend-1])/dl;
-	Df20wN[2] = .5*f20Np1/dl;
-
-	std::vector<Tensor<2,Ndof>> Df22wppN(5);
-	Df22wppN[0] = -0.5*f22[Nend-2]/pow(dl,3);
-	Df22wppN[1] = f22[Nend-2]/pow(dl,3);
-	Df22wppN[2] = 0.5*(f22Np1 - f22[Nend-2])/pow(dl,3);
-	Df22wppN[3] = -f22Np1/pow(dl,3);
-	Df22wppN[4] = 0.5*f22Np1/pow(dl,3);
 
 
 	//finding el equations for the N boundaries
@@ -2639,37 +2293,34 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 
 		//this one has a problem
-		DDf21wp[i][0] = -0.5*(transpose6D(f12[i-1])/pow(dl,3));
-		DDf21wp[i][1] = transpose6D(f12[i])/pow(dl,3);
-		Tensor<2,Ndof> f12difftemp = f12[i-1] - transpose6D(f21Np1);
-		DDf21wp[i][2] = 0.5*(transpose6D(f12difftemp))/pow(dl,3);
-		DDf21wp[i][3] = -transpose6D(f12[i])/pow(dl,3);
+		DDf21wp[i][0] = -0.5*(transpose(f12[i-1])/pow(dl,3));
+		DDf21wp[i][1] = transpose(f12[i])/pow(dl,3);
+		Tensor<2,Ndof> f12difftemp = f12[i-1] - transpose(f21Np1);
+		DDf21wp[i][2] = 0.5*(transpose(f12difftemp))/pow(dl,3);
+		DDf21wp[i][3] = -transpose(f12[i])/pow(dl,3);
 		DDf21wp[i][4] = 0.5*(f21Np1)/pow(dl,3);
 
 
 
-
-
-
-		DDf20w[i][1] = transpose6D(f02[i-1])/pow(dl,2);
-		DDf20w[i][2] = -2.*transpose6D(f02[i])/pow(dl,2);
+		DDf20w[i][1] = transpose(f02[i-1])/pow(dl,2);
+		DDf20w[i][2] = -2.*transpose(f02[i])/pow(dl,2);
 		DDf20w[i][3] = f20Np1/pow(dl,2);
 
 
 		Df12wpp[i][0] = -0.5*f12[i-1]/pow(dl,3);
 		Df12wpp[i][1] = f12[i-1]/pow(dl,3);
-		Df12wpp[i][2] = 0.5*(transpose6D(f21Np1)-f12[i-1])/pow(dl,3);
-		Df12wpp[i][3] = -transpose6D(f21Np1)/pow(dl,3);
-		Df12wpp[i][4] = 0.5*transpose6D(f21Np1)/pow(dl,3);
+		Df12wpp[i][2] = 0.5*(transpose(f21Np1)-f12[i-1])/pow(dl,3);
+		Df12wpp[i][3] = -transpose(f21Np1)/pow(dl,3);
+		Df12wpp[i][4] = 0.5*transpose(f21Np1)/pow(dl,3);
 
 		Df11wp[i][1] = f11ext[2*i-1]/pow(dl,2);
-		Tensor<2,Ndof> f11Np1_2 = 0.5*(f11[i] + f11Np1);
+		Tensor<2,Ndof> f11Np1_2 = 0.0*0.5*(f11[i] + f11Np1);
 		Df11wp[i][2] = -(f11ext[2*i-1] + f11Np1_2)/pow(dl,2);
 		Df11wp[i][3] = f11Np1_2/pow(dl,2);
 
 
-		Df10w[i][1] = -0.5*transpose6D(f01[i-1])/dl;
-		Df10w[i][3] = 0.5*transpose6D(f01Np1)/dl;
+		Df10w[i][1] = -0.5*transpose(f01[i-1])/dl;
+		Df10w[i][3] = 0.5*transpose(f01Np1)/dl;
 
 
 		f02wpp[i][1] = f02[i]/pow(dl,2);
@@ -2682,61 +2333,6 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 
 		f00w[i][2] = f00[i];
-
-		/*
-
-		 */
-	}
-
-
-	std::vector<Tensor<2,Ndof>> BC0_1(3);
-	std::vector<Tensor<2,Ndof>> BC0_2(5);
-
-	std::vector<Tensor<2,Ndof>> BCN_1(3);
-	std::vector<Tensor<2,Ndof>> BCN_2(5);
-
-
-
-	if (m_BC == Real){
-		// Boundary conditions at S0
-		BC0_1[0] = f22[0]/pow(dl,2) - 0.5*transpose6D(f12[0])/dl;
-		BC0_1[1] = -2.*f22[0]/pow(dl,2) + transpose6D(f02[0]);
-		BC0_1[2] = f22[0]/pow(dl,2) + 0.5*transpose6D(f12[0])/dl;
-
-		BC0_2[0] = -Df22wpp0[0];
-		BC0_2[1] = -Df22wpp0[1] -Df21wp0[0] -Df20w0[0] + f12[0]/pow(dl,2) - 0.5*f11[0]/dl;
-		BC0_2[2] = -Df22wpp0[2] -Df21wp0[1] -Df20w0[1] -2.*f12[0]/pow(dl,2) + transpose6D(f01[0]);
-		BC0_2[3] = -Df22wpp0[3] -Df21wp0[2] -Df20w0[2] + f12[0]/pow(dl,2) + 0.5*f11[0]/dl;
-		BC0_2[4] = -Df22wpp0[4];
-
-		// Boundary conditions at SL
-		BCN_1[0] = f22[Nend-1]/pow(dl,2) - 0.5*transpose6D(f12[Nend-1])/dl;
-		BCN_1[1] = -2.*f22[Nend-1]/pow(dl,2) + transpose6D(f02[Nend-1]);
-		BCN_1[2] = f22[Nend-1]/pow(dl,2) + 0.5*transpose6D(f12[Nend-1])/dl;
-
-
-		BCN_2[0] = -Df22wppN[0];
-		BCN_2[1] = -Df22wppN[1] -Df21wpN[0] -Df20wN[0] + f12[Nend-1]/pow(dl,2) - 0.5*f11[Nend-1]/dl;
-		BCN_2[2] = -Df22wppN[2] -Df21wpN[1] -Df20wN[1] -2.*f12[Nend-1]/pow(dl,2) + transpose6D(f01[Nend-1]);
-		BCN_2[3] = -Df22wppN[3] -Df21wpN[2] -Df20wN[2] + f12[Nend-1]/pow(dl,2) + 0.5*f11[Nend-1]/dl;
-		BCN_2[4] = -Df22wppN[4];
-
-
-		bool replacewith3rdorder = true;
-
-		if (replacewith3rdorder){
-			BC0_2[0] = -0.5*Iden6D;
-			BC0_2[1] = Iden6D;
-			BC0_2[2] = 0.*Iden6D;
-			BC0_2[3] = -1.*Iden6D;
-			BC0_2[4] = 0.5*Iden6D;
-
-			BCN_2[0] = -0.5*Iden6D;
-			BCN_2[1] = Iden6D;
-			BCN_2[2] = 0.*Iden6D;
-			BCN_2[3] = -1.*Iden6D;
-			BCN_2[4] = 0.5*Iden6D;
-		}
 
 
 	}
@@ -2754,11 +2350,11 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 
 
-	LAPACKFullMatrix<double> FDHessian3;
+	LAPACKFullMatrix<double> FDHessian;
 
 
-	FDHessian3.reinit(Ndof*(rvals.size()+4),Ndof*(rvals.size()+4));
-	FDHessian3 = 0.;
+	FDHessian.reinit(Ndof*(rvals.size()+4),Ndof*(rvals.size()+4));
+	FDHessian = 0.;
 
 
 
@@ -2766,58 +2362,13 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		for (int j = 0; j < stencilsize; j++){
 			for (int k = 0; k < Ndof; k++){
 				for (int l = 0; l < Ndof; l++){
-					FDHessian3(Ndof*(i+2)+k,Ndof*(i+j)+l) = localhessian[i][j][k][l];
+					FDHessian(Ndof*(i+2)+k,Ndof*(i+j)+l) = localhessian[i][j][k][l];
 				}
 			}
 		}
 	}
 
-	for (int i = 0; i < BC0_1.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(j,Ndof*(1+i)+k) = BC0_1[i][j][k];
-			}
-		}
-	}
-
-	for (int i = 0; i < BC0_2.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof + j,Ndof*i+k) = BC0_2[i][j][k];
-			}
-		}
-	}
-
-	for (int i = 0; i < BCN_1.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof*(rvals.size() + 3) + j,Ndof*(rvals.size()+i)+k) = BCN_1[i][j][k];
-			}
-		}
-	}
-
-	for (int i = 0; i < BCN_2.size(); i++){
-		for (int j = 0; j < Ndof; j++){
-			for (int k = 0; k < Ndof; k++){
-				FDHessian3(Ndof*(rvals.size() + 2) + j,Ndof*(rvals.size()+i - 1)+k) = BCN_2[i][j][k];
-			}
-		}
-	}
-
-	//save_matrix(FDHessian);
-	save_matrix(FDHessian3);
-	/*
-	FDHessian.compute_eigenvalues(false, false);
-
-	int nevals = 2*rvals.size();
-	std::vector<double> evals(nevals);
-
-	for (int i = 0; i < nevals; i++){
-		evals[i] = FDHessian.eigenvalue(i).real();
-		std::cout << evals[i] << std::endl;
-	}
-
-	 */
+	save_matrix(FDHessian);
 }
 // @sect4{Step4::solve}
 
