@@ -4,7 +4,7 @@ Neigs = 10;
 lowesteigs = zeros(Neigs,Nsteps);
 
 
-ploton = true;
+ploton = false;
 padding = false;
 padding2 = true;
 eigvalplotoffset = false;
@@ -14,33 +14,14 @@ if not(ploton)
     skip = 1;
 end
 Neigskip = 0;
-Neigplot = 8;
+Neigplot = 5;
 
-Ndof = 6;
-for i = 1:skip:Nsteps
+Ndof = 2;
+parfor i = 1:skip:Nsteps
     i
     Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);
-    Mv(3:4,:) = Mv(1:2,:); Mv(1:2,:) = 0; Mv((end-3):(end-2),:) = Mv((end-1):end,:); Mv((end-1):end,:) = 0;Mv = Mv(3:(end-2),3:(end-2));
-    %     Mv(3:4,:) = 0;
-    %     O3 = [-0.5*eye(2),eye(2),zeros(2),-eye(2),0.5*eye(2)]; Mv(3:4,1:10) = O3;
-    %     Mv((end-3):(end-2),:) = 0; Mv((end-3):(end-2),(end-9):(end)) = O3;
-    dl = 1/size(Mv,1);
-    Bv = eye(size(Mv)); Bv(1:2*Ndof,1:2*Ndof)= 0; Bv((end-2*Ndof+1):end,(end-2*Ndof+1):end) = 0;
-    
-    Bv = eye(size(Mv));
-    Bv(1:2,1:2) = 0;
-    Bv(end-1:end, end-1:end) = 0;
-    
-    
-    %         Mv(5,:) = 0;
-    %         Mv(5,5) = 1;
-    %
-    %         Mv(7,:) = 0;
-    %         Mv(7,7) = 1;
-    %         Mv(8,:) = 0;
-    %         Mv(8,8) = 1;
-    %[A,B] = eig(Mv);
-    [A,B] = eigs(Mv,Bv,Neigs,-.1);
+    dl = max(size(Mv))/Ndof;
+    [A,B] = eigs(Mv,Neigs,'SM');
     evs = sort(real(diag(B)));
     
     lowesteigs(:,i) = evs(1:Neigs);
@@ -81,8 +62,8 @@ for i = 1:skip:Nsteps
             hold off
             plot(rv(:,2),zv(:,2),'k.')
             hold all
-            rpert = evec(3:2:(end-2));
-            zpert = evec(4:2:(end-2));
+            rpert = evec(1:2:end);
+            zpert = evec(2:2:end);
             plot(rv(:,2) + sc*rpert ,zv(:,2) + sc*zpert,'r.');
             plot(rv(:,2) + sc*rpert ,zv(:,2) + sc*zpert,'r--');
             plot(rv(:,2) - sc*rpert,zv(:,2) - sc*zpert,'r.');
@@ -118,7 +99,7 @@ end
 
 figure()
 hold all
-for i = Neigskip:Neigs
+for i = 1:Neigs
     plot(iter,lowesteigs(i,:))
 end
 
@@ -126,15 +107,15 @@ end
 
 ival = 0;
 
-Mv = load(['stabmatrices/stabmatrix' , num2str(ival) , '.csv']);
+Mv = load(['build/stabmatrices/stabmatrix' , num2str(ival) , '.csv']);
 
 [A,B] = eig(Mv);
 bv = real(diag(B));
 [bmin,bminind] = min(bv);
 evec = A(:,bminind);
 
-rv = sortrows(readmatrix(['solutions/r_values_' num2str(ival) '.csv']));
-zv = sortrows(readmatrix(['solutions/z_values_' num2str(ival) '.csv']));
+rv = sortrows(readmatrix(['build/solutions/r_values_' num2str(ival) '.csv']));
+zv = sortrows(readmatrix(['build/solutions/z_values_' num2str(ival) '.csv']));
 
 sc = 1.;
 figure()

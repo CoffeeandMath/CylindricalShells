@@ -47,7 +47,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.01;
+	h = 0.002;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -58,7 +58,7 @@ void ElasticProblem::solve_path(){
 	double defmagmin = 0.00;
 	//double defmagmax = 0.6*pi;
 	double defmagmax = 4.;
-	int Nmax = 300;
+	int Nmax = 400;
 	N2max = 800;
 
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
@@ -125,8 +125,8 @@ void ElasticProblem::solve_path(){
 			evalsall[cnt] = calculate_stability();
 			save_eigenvalues(evalsall);
 		}
-		//calculate_fd_stability();
-		calculate_fd_fourier_stability((double) 3.);
+		calculate_fd_stability2();
+		//calculate_fd_fourier_stability2((double) fmodein);
 		output_data_csv_iterative("solutions",cnt);
 		save_current_state(cnt, (cnt==0));
 
@@ -197,8 +197,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																																																																																																																							<< std::endl << "   Total number of cells: "
-																																																																																																																																																																																							<< triangulation.n_cells() << std::endl;
+																																																																																																																																																																																													<< std::endl << "   Total number of cells: "
+																																																																																																																																																																																													<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -1268,10 +1268,11 @@ void ElasticProblem::calculate_fd_stability(){
 
 	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
 	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
+	/*
 	for (int i = 0; i < upp.size(); i++){
 		std::cout << upp[i] << std::endl;
 	}
-
+	 */
 
 	for (int i = 0; i < rvals.size(); i++){
 		f00[i] = calcDDf(u[i], up[i], upp[i], 0, 0, i);
@@ -1611,6 +1612,310 @@ void ElasticProblem::calculate_fd_stability(){
 	}
 
 	save_matrix(FDHessian);
+
+
+}
+
+void ElasticProblem::calculate_fd_stability2(){
+	extract_and_sort_values();
+
+
+	const int Ndof = 2;
+	std::vector<double> Si(rvals.size());
+	std::vector<Tensor<1,2>> u(rvals.size());
+	std::vector<Tensor<1,2>> up(rvals.size());
+	std::vector<Tensor<1,2>> upp(rvals.size());
+
+	std::vector<Tensor<2,Ndof>> f00(rvals.size());
+	std::vector<Tensor<2,Ndof>> f01(rvals.size());
+	std::vector<Tensor<2,Ndof>> f02(rvals.size());
+	std::vector<Tensor<2,Ndof>> f11(rvals.size());
+	std::vector<Tensor<2,Ndof>> f12(rvals.size());
+	std::vector<Tensor<2,Ndof>> f22(rvals.size());
+
+
+	for (int i = 0; i < rvals.size(); i++){
+		Si[i] = rvals[i].first;
+		u[i][0] = rvals[i].second;
+		u[i][1] = zvals[i].second;
+		up[i][0] = xirvals[i].second;
+		up[i][1] = xizvals[i].second;
+
+
+	}
+
+	std::vector<Tensor<1,2>> utilde(rvals.size()-1);
+	std::vector<Tensor<1,2>> utilde_p(rvals.size()-1);
+	std::vector<Tensor<1,2>> utilde_pp(rvals.size()-1);
+
+	std::vector<Tensor<2,Ndof>> f00tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f01tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f02tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f11tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f12tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f22tilde(rvals.size()-1);
+
+	double dl = Si[1] - Si[0];
+	//upp[0] = (up[1] - up[0])/dl;
+	//upp[0] = -11.*up[0]/(6. * dl) + 3.*up[1]/dl - 1.5 * up[2]/dl + up[3]/(3.*dl);
+
+	for (int i = 1; i < (rvals.size()-1); i++){
+		upp[i] = (up[i+1] - up[i-1])/(2.*dl);
+
+	}
+
+
+
+
+	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
+	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
+	/*
+	for (int i = 0; i < upp.size(); i++){
+		std::cout << upp[i] << std::endl;
+	}
+	 */
+
+	for (int i = 0; i < rvals.size(); i++){
+		f00[i] = calcDDf(u[i], up[i], upp[i], 0, 0, i);
+		f01[i] = calcDDf(u[i], up[i], upp[i], 0, 1, i);
+		f02[i] = calcDDf(u[i], up[i], upp[i], 0, 2, i);
+		f11[i] = calcDDf(u[i], up[i], upp[i], 1, 1, i);
+		f12[i] = calcDDf(u[i], up[i], upp[i], 1, 2, i);
+		f22[i] = calcDDf(u[i], up[i], upp[i], 2, 2, i);
+
+		//std::cout << f00[i][0][0] << "," << f00[i][0][1] << "," << f00[i][1][1] << "," << std::endl;
+
+
+	}
+
+	//setting half values
+
+	for (int i = 0; i < utilde.size(); i++){
+		utilde[i] = 0.5*(u[i] + u[i+1]);
+		utilde_p[i] = 0.5*(up[i] + up[i+1]);
+		utilde_pp[i] = 0.5*(upp[i] + upp[i+1]);
+
+		f00tilde[i] = 0.5*(f00[i]+f00[i+1]);
+		f01tilde[i] = 0.5*(f01[i]+f01[i+1]);
+		f02tilde[i] = 0.5*(f02[i]+f02[i+1]);
+		f11tilde[i] = 0.5*(f11[i]+f11[i+1]);
+		f12tilde[i] = 0.5*(f12[i]+f12[i+1]);
+		f22tilde[i] = 0.5*(f22[i]+f22[i+1]);
+
+	}
+
+
+
+
+	Tensor<2,Ndof> Zero;
+
+
+	Tensor<2,Ndof> Iden;
+	for (int i = 0; i < Ndof; i++){
+		Iden[i][i] = 1.;
+	}
+	// We will also need f11 defined on the half nodes
+
+
+	int Nend = rvals.size();
+
+
+	std::vector<std::vector<Tensor<2,Ndof>>> Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> D2i(rvals.size()-1);
+
+	int StencilSize2 = 4;
+	for (int i = 0; i < (rvals.size()-1); i++){
+		Gi[i].resize(StencilSize2);
+		Di[i].resize(StencilSize2);
+		D2i[i].resize(StencilSize2);
+	}
+
+	for (int i = 0; i < Gi.size(); i++){
+		Gi[i][0] = Zero;
+		Gi[i][1] = 1.0*Iden;
+		Gi[i][2] = 0.0*Iden;
+		Gi[i][3] = Zero;
+
+		Di[i][0] = Zero;
+		Di[i][1] = -Iden/dl;
+		Di[i][2] = Iden/dl;
+		Di[i][3] = Zero;
+
+		if (i == 0) {
+			D2i[i][0] = Zero;
+			D2i[i][1] = Iden/pow(dl,2);
+			D2i[i][2] = -2.*Iden/pow(dl,2);
+			D2i[i][3] = Iden/pow(dl,2);
+
+		} else if (i == (Gi.size()-1)) {
+
+			D2i[i][0] = Iden/pow(dl,2);
+			D2i[i][1] = -2.*Iden/pow(dl,2);
+			D2i[i][2] = Iden/pow(dl,2);
+			D2i[i][3] = Zero;
+
+		} else {
+			/*
+			D2i[i][0] = Iden/(2.*pow(dl,2));
+			D2i[i][1] = -Iden/(2.*pow(dl,2));
+			D2i[i][2] = -Iden/(2.*pow(dl,2));
+			D2i[i][3] = Iden/(2.*pow(dl,2));
+			 */
+
+			D2i[i][0] = Iden/(pow(dl,2));
+			D2i[i][1] = -2.*Iden/pow(dl,2);
+			D2i[i][2] = Iden/pow(dl,2);
+			D2i[i][3] = Zero;
+		}
+	}
+
+
+	std::vector<std::vector<Tensor<2,Ndof>>> f22D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f21Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f20Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f12D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f11Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f10Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f02D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f01Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f00Gi(rvals.size()-1);
+
+	for (int i = 0; i < (rvals.size()-1); i++){
+		f22D2i[i].resize(StencilSize2);
+		f21Di[i].resize(StencilSize2);
+		f20Gi[i].resize(StencilSize2);
+		f12D2i[i].resize(StencilSize2);
+		f11Di[i].resize(StencilSize2);
+		f10Gi[i].resize(StencilSize2);
+		f02D2i[i].resize(StencilSize2);
+		f01Di[i].resize(StencilSize2);
+		f00Gi[i].resize(StencilSize2);
+
+		for (int j = 0; j < StencilSize2; j++){
+			f22D2i[i][j] = f22tilde[i]*D2i[i][j];
+			f21Di[i][j] = transpose(f12tilde[i])*Di[i][j];
+			f20Gi[i][j] = transpose(f02tilde[i])*Gi[i][j];
+
+			f12D2i[i][j] = f12tilde[i]*D2i[i][j];
+			f11Di[i][j] = f11tilde[i]*Di[i][j];
+			f10Gi[i][j] = transpose(f01tilde[i])*Gi[i][j];
+
+			f02D2i[i][j]= f02tilde[i]*D2i[i][j];
+			f01Di[i][j] = f01tilde[i]*Di[i][j];
+			f00Gi[i][j] = f00tilde[i]*Gi[i][j];
+
+		}
+	}
+
+
+	LAPACKFullMatrix<double> G; G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); G = 0.;
+	LAPACKFullMatrix<double> D; D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); D = 0.;
+	LAPACKFullMatrix<double> D2; D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); D2 = 0.;
+	LAPACKFullMatrix<double> f22D2; f22D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f22D2 = 0.;
+	LAPACKFullMatrix<double> f21D; f21D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f21D = 0.;
+	LAPACKFullMatrix<double> f20G; f20G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f20G = 0.;
+	LAPACKFullMatrix<double> f12D2; f12D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f12D2 = 0.;
+	LAPACKFullMatrix<double> f11D; f11D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f11D = 0.;
+	LAPACKFullMatrix<double> f10G; f10G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f10G = 0.;
+	LAPACKFullMatrix<double> f02D2; f02D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f02D2 = 0.;
+	LAPACKFullMatrix<double> f01D; f01D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f01D = 0.;
+	LAPACKFullMatrix<double> f00G; f00G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f00G = 0.;
+
+
+	for (int i = 0; i < Di.size(); i++){
+		if (i==0){
+			for (int j = 1; j < StencilSize2; j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+
+					}
+				}
+			}
+
+		} else if (i == (Di.size()-1)){
+			for (int j = 0; j < StencilSize2-1; j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+					}
+				}
+			}
+		} else {
+			for (int j = 0; j < (StencilSize2); j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+					}
+				}
+			}
+
+		}
+	}
+
+	LAPACKFullMatrix<double> Hout; Hout.reinit(Ndof*rvals.size(),Ndof*rvals.size()); Hout = 0.;
+	LAPACKFullMatrix<double> F2; F2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F2 = 0.;
+	LAPACKFullMatrix<double> F1; F1.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F1 = 0.;
+	LAPACKFullMatrix<double> F0; F0.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F0 = 0.;
+
+	for (int i = 0; i < f22D2.m(); i++){
+		for (int j = 0; j < f22D2.n(); j++){
+			F2(i,j) = f22D2(i,j) + f21D(i,j) + f20G(i,j);
+			F1(i,j) = f12D2(i,j) + f11D(i,j) + f10G(i,j);
+			F0(i,j) = f02D2(i,j) + f01D(i,j) + f00G(i,j);
+		}
+	}
+
+
+	D2.Tmmult(Hout,F2,true);
+	D.Tmmult(Hout,F1,true);
+	G.Tmmult(Hout,F0,true);
+
+
+	save_matrix(Hout);
 
 
 }
@@ -2026,10 +2331,11 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
 	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
+	/*
 	for (int i = 0; i < upp.size(); i++){
 		std::cout << upp[i] << std::endl;
 	}
-
+	 */
 
 	for (int i = 0; i < rvals.size(); i++){
 		f00[i] = calcDDf_Fourier(u[i], up[i], upp[i], 0, 0, i,fmode);
@@ -2373,7 +2679,311 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 // @sect4{Step4::solve}
 
 
+void ElasticProblem::calculate_fd_fourier_stability2(double fmode){
 
+
+	extract_and_sort_values();
+
+
+	const int Ndof = 6;
+	std::vector<double> Si(rvals.size());
+	std::vector<Tensor<1,2>> u(rvals.size());
+	std::vector<Tensor<1,2>> up(rvals.size());
+	std::vector<Tensor<1,2>> upp(rvals.size());
+
+	std::vector<Tensor<2,Ndof>> f00(rvals.size());
+	std::vector<Tensor<2,Ndof>> f01(rvals.size());
+	std::vector<Tensor<2,Ndof>> f02(rvals.size());
+	std::vector<Tensor<2,Ndof>> f11(rvals.size());
+	std::vector<Tensor<2,Ndof>> f12(rvals.size());
+	std::vector<Tensor<2,Ndof>> f22(rvals.size());
+
+
+	for (int i = 0; i < rvals.size(); i++){
+		Si[i] = rvals[i].first;
+		u[i][0] = rvals[i].second;
+		u[i][1] = zvals[i].second;
+		up[i][0] = xirvals[i].second;
+		up[i][1] = xizvals[i].second;
+
+
+	}
+
+	std::vector<Tensor<1,2>> utilde(rvals.size()-1);
+	std::vector<Tensor<1,2>> utilde_p(rvals.size()-1);
+	std::vector<Tensor<1,2>> utilde_pp(rvals.size()-1);
+
+	std::vector<Tensor<2,Ndof>> f00tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f01tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f02tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f11tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f12tilde(rvals.size()-1);
+	std::vector<Tensor<2,Ndof>> f22tilde(rvals.size()-1);
+
+	double dl = Si[1] - Si[0];
+	//upp[0] = (up[1] - up[0])/dl;
+	//upp[0] = -11.*up[0]/(6. * dl) + 3.*up[1]/dl - 1.5 * up[2]/dl + up[3]/(3.*dl);
+
+	for (int i = 1; i < (rvals.size()-1); i++){
+		upp[i] = (up[i+1] - up[i-1])/(2.*dl);
+
+	}
+
+
+
+
+	upp[0] = 2.5*upp[1] - 2.*upp[2] + 0.5*upp[3];
+	upp[rvals.size()-1] = 2.5*upp[rvals.size()-2] - 2.*upp[rvals.size()-3] + 0.5*upp[rvals.size()-4];
+	/*
+		for (int i = 0; i < upp.size(); i++){
+			std::cout << upp[i] << std::endl;
+		}
+	 */
+
+	for (int i = 0; i < rvals.size(); i++){
+		f00[i] = calcDDf_Fourier(u[i], up[i], upp[i], 0, 0, i,fmode);
+		f01[i] = calcDDf_Fourier(u[i], up[i], upp[i], 0, 1, i,fmode);
+		f02[i] = calcDDf_Fourier(u[i], up[i], upp[i], 0, 2, i,fmode);
+		f11[i] = calcDDf_Fourier(u[i], up[i], upp[i], 1, 1, i,fmode);
+		f12[i] = calcDDf_Fourier(u[i], up[i], upp[i], 1, 2, i,fmode);
+		f22[i] = calcDDf_Fourier(u[i], up[i], upp[i], 2, 2, i,fmode);
+
+		//std::cout << f00[i][0][0] << "," << f00[i][0][1] << "," << f00[i][1][1] << "," << std::endl;
+
+
+	}
+
+	//setting half values
+
+	for (int i = 0; i < utilde.size(); i++){
+		utilde[i] = 0.5*(u[i] + u[i+1]);
+		utilde_p[i] = 0.5*(up[i] + up[i+1]);
+		utilde_pp[i] = 0.5*(upp[i] + upp[i+1]);
+
+		f00tilde[i] = 0.5*(f00[i]+f00[i+1]);
+		f01tilde[i] = 0.5*(f01[i]+f01[i+1]);
+		f02tilde[i] = 0.5*(f02[i]+f02[i+1]);
+		f11tilde[i] = 0.5*(f11[i]+f11[i+1]);
+		f12tilde[i] = 0.5*(f12[i]+f12[i+1]);
+		f22tilde[i] = 0.5*(f22[i]+f22[i+1]);
+
+	}
+
+
+
+
+	Tensor<2,Ndof> Zero;
+
+
+	Tensor<2,Ndof> Iden;
+	for (int i = 0; i < Ndof; i++){
+		Iden[i][i] = 1.;
+	}
+	// We will also need f11 defined on the half nodes
+
+
+	int Nend = rvals.size();
+
+
+	std::vector<std::vector<Tensor<2,Ndof>>> Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> D2i(rvals.size()-1);
+
+	int StencilSize2 = 4;
+	for (int i = 0; i < (rvals.size()-1); i++){
+		Gi[i].resize(StencilSize2);
+		Di[i].resize(StencilSize2);
+		D2i[i].resize(StencilSize2);
+	}
+
+	for (int i = 0; i < Gi.size(); i++){
+		Gi[i][0] = Zero;
+		Gi[i][1] = 1.0*Iden;
+		Gi[i][2] = 0.0*Iden;
+		Gi[i][3] = Zero;
+
+		Di[i][0] = Zero;
+		Di[i][1] = -Iden/dl;
+		Di[i][2] = Iden/dl;
+		Di[i][3] = Zero;
+
+		if (i == 0) {
+			D2i[i][0] = Zero;
+			D2i[i][1] = Iden/pow(dl,2);
+			D2i[i][2] = -2.*Iden/pow(dl,2);
+			D2i[i][3] = Iden/pow(dl,2);
+
+		} else if (i == (Gi.size()-1)) {
+
+			D2i[i][0] = Iden/pow(dl,2);
+			D2i[i][1] = -2.*Iden/pow(dl,2);
+			D2i[i][2] = Iden/pow(dl,2);
+			D2i[i][3] = Zero;
+
+		} else {
+			/*
+				D2i[i][0] = Iden/(2.*pow(dl,2));
+				D2i[i][1] = -Iden/(2.*pow(dl,2));
+				D2i[i][2] = -Iden/(2.*pow(dl,2));
+				D2i[i][3] = Iden/(2.*pow(dl,2));
+			 */
+			D2i[i][0] = Zero;
+			D2i[i][1] = Iden/(pow(dl,2));
+			D2i[i][2] = -2.*Iden/pow(dl,2);
+			D2i[i][3] = Iden/pow(dl,2);
+
+
+		}
+	}
+
+
+	std::vector<std::vector<Tensor<2,Ndof>>> f22D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f21Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f20Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f12D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f11Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f10Gi(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f02D2i(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f01Di(rvals.size()-1);
+	std::vector<std::vector<Tensor<2,Ndof>>> f00Gi(rvals.size()-1);
+
+	for (int i = 0; i < (rvals.size()-1); i++){
+		f22D2i[i].resize(StencilSize2);
+		f21Di[i].resize(StencilSize2);
+		f20Gi[i].resize(StencilSize2);
+		f12D2i[i].resize(StencilSize2);
+		f11Di[i].resize(StencilSize2);
+		f10Gi[i].resize(StencilSize2);
+		f02D2i[i].resize(StencilSize2);
+		f01Di[i].resize(StencilSize2);
+		f00Gi[i].resize(StencilSize2);
+
+		for (int j = 0; j < StencilSize2; j++){
+			f22D2i[i][j] = f22tilde[i]*D2i[i][j];
+			f21Di[i][j] = transpose(f12tilde[i])*Di[i][j];
+			f20Gi[i][j] = transpose(f02tilde[i])*Gi[i][j];
+
+			f12D2i[i][j] = f12tilde[i]*D2i[i][j];
+			f11Di[i][j] = f11tilde[i]*Di[i][j];
+			f10Gi[i][j] = transpose(f01tilde[i])*Gi[i][j];
+
+			f02D2i[i][j]= f02tilde[i]*D2i[i][j];
+			f01Di[i][j] = f01tilde[i]*Di[i][j];
+			f00Gi[i][j] = f00tilde[i]*Gi[i][j];
+
+		}
+	}
+
+
+	LAPACKFullMatrix<double> G; G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); G = 0.;
+	LAPACKFullMatrix<double> D; D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); D = 0.;
+	LAPACKFullMatrix<double> D2; D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); D2 = 0.;
+	LAPACKFullMatrix<double> f22D2; f22D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f22D2 = 0.;
+	LAPACKFullMatrix<double> f21D; f21D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f21D = 0.;
+	LAPACKFullMatrix<double> f20G; f20G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f20G = 0.;
+	LAPACKFullMatrix<double> f12D2; f12D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f12D2 = 0.;
+	LAPACKFullMatrix<double> f11D; f11D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f11D = 0.;
+	LAPACKFullMatrix<double> f10G; f10G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f10G = 0.;
+	LAPACKFullMatrix<double> f02D2; f02D2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f02D2 = 0.;
+	LAPACKFullMatrix<double> f01D; f01D.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f01D = 0.;
+	LAPACKFullMatrix<double> f00G; f00G.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); f00G = 0.;
+
+
+	for (int i = 0; i < Di.size(); i++){
+		if (i==0){
+			for (int j = 1; j < StencilSize2; j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+
+					}
+				}
+			}
+
+		} else if (i == (Di.size()-1)){
+			for (int j = 0; j < StencilSize2-1; j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+					}
+				}
+			}
+		} else {
+			for (int j = 0; j < (StencilSize2); j++){
+				for (int k = 0; k < Ndof; k++){
+					for (int l = 0; l < Ndof; l++){
+						G(Ndof * i + k, Ndof * (i + j - 1) + l) += Gi[i][j][k][l];
+						D(Ndof * i + k, Ndof * (i + j - 1) + l) += Di[i][j][k][l];
+						D2(Ndof * i + k, Ndof * (i + j - 1) + l) += D2i[i][j][k][l];
+
+						f22D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f22D2i[i][j][k][l];
+						f21D(Ndof * i + k, Ndof * (i + j - 1) + l) += f21Di[i][j][k][l];
+						f20G(Ndof * i + k, Ndof * (i + j - 1) + l) += f20Gi[i][j][k][l];
+
+						f12D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f12D2i[i][j][k][l];
+						f11D(Ndof * i + k, Ndof * (i + j - 1) + l) += f11Di[i][j][k][l];
+						f10G(Ndof * i + k, Ndof * (i + j - 1) + l) += f10Gi[i][j][k][l];
+
+						f02D2(Ndof * i + k, Ndof * (i + j - 1) + l) += f02D2i[i][j][k][l];
+						f01D(Ndof * i + k, Ndof * (i + j - 1) + l) += f01Di[i][j][k][l];
+						f00G(Ndof * i + k, Ndof * (i + j - 1) + l) += f00Gi[i][j][k][l];
+					}
+				}
+			}
+
+		}
+	}
+
+	LAPACKFullMatrix<double> Hout; Hout.reinit(Ndof*rvals.size(),Ndof*rvals.size()); Hout = 0.;
+	LAPACKFullMatrix<double> F2; F2.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F2 = 0.;
+	LAPACKFullMatrix<double> F1; F1.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F1 = 0.;
+	LAPACKFullMatrix<double> F0; F0.reinit(Ndof*(rvals.size()-1),Ndof*rvals.size()); F0 = 0.;
+
+	for (int i = 0; i < f22D2.m(); i++){
+		for (int j = 0; j < f22D2.n(); j++){
+			F2(i,j) = f22D2(i,j) + f21D(i,j) + f20G(i,j);
+			F1(i,j) = f12D2(i,j) + f11D(i,j) + f10G(i,j);
+			F0(i,j) = f02D2(i,j) + f01D(i,j) + f00G(i,j);
+		}
+	}
+
+
+	D2.Tmmult(Hout,F2,true);
+	D.Tmmult(Hout,F1,true);
+	G.Tmmult(Hout,F0,true);
+
+
+	save_matrix(Hout);
+
+}
 
 // I want to write a new function to deal with the boundary conditions as constraints
 
@@ -3356,6 +3966,10 @@ void ElasticProblem::run()
 {
 	std::cout << "Set refinement level: " ;
 	std::cin >> refinelevel;
+	std::cout << std::endl;
+
+	std::cout << "Choose Fourier Mode (int): ";
+	std::cin >> fmodein;
 	std::cout << std::endl;
 	std::cout << "Solving problem in " << DIM << " space dimensions."
 			<< std::endl;

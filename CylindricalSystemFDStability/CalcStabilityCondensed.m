@@ -4,7 +4,7 @@ Neigs = 10;
 lowesteigs = zeros(Neigs,Nsteps);
 
 
-ploton = true;
+ploton = false;
 eigvalplotoffset = false;
 skip = 10;
 figure();
@@ -15,9 +15,9 @@ Neigskip = 0;
 Neigplot = 8;
 noffset = 4;
 Ndof = 6;
-for i = 1:skip:Nsteps
+parfor i = 1:skip:Nsteps
     i
-    Mv = load(['stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);
+    Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);
     dl = 1/size(Mv,1);
     Mv = Mv((noffset+1):(end-noffset),(noffset+1):(end-noffset));
     m1 = Mv(1:2,1:2);
@@ -65,8 +65,8 @@ for i = 1:skip:Nsteps
                 isviable = true;
             end
             
-            rv = sortrows(readmatrix(['solutions/r_values_' num2str(iter(i)) '.csv']));
-            zv = sortrows(readmatrix(['solutions/z_values_' num2str(iter(i)) '.csv']));
+            rv = sortrows(readmatrix(['build/solutions/r_values_' num2str(iter(i)) '.csv']));
+            zv = sortrows(readmatrix(['build/solutions/z_values_' num2str(iter(i)) '.csv']));
             subplot(Neigplot,2,2*j+1)
             
             sc = 1;

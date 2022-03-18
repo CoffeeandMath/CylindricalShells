@@ -78,7 +78,9 @@ private:
 	Tensor<2,2> calcDDf(const Tensor<1,2> &, const Tensor<1,2> &, const Tensor<1,2> &, int, int,int);
 	Tensor<2,6> calcDDf_Fourier(const Tensor<1,2> &, const Tensor<1,2> &, const Tensor<1,2> &, int, int,int,double);
 	void calculate_fd_stability();
+	void calculate_fd_stability2();
 	void calculate_fd_fourier_stability(double);
+	void calculate_fd_fourier_stability2(double);
 	void output_stability_matrices(int);
 	void save_current_state(unsigned int, bool);
 	void exportdata(std::string);
@@ -171,6 +173,8 @@ private:
 	unsigned int nxdofs = 0;
 	unsigned int nxidofs = 0;
 	int N2max = 0;
+
+	int fmodein = 1;
 
 	enum BoundaryConditions{
 		Real=0,Testcase,Slopecase,TaylorExpansioncase, TaylorExpansioncase2

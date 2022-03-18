@@ -56,7 +56,7 @@ void Reference_Configuration::calc_covariants(){
 
 double Reference_Configuration::phifun(double s) {
 	double offset = defmag;
-	double offsetlim = 0.5;
+	double offsetlim = 0.3;
 	if (offset > offsetlim) {
 		offset = offsetlim;
 	}
