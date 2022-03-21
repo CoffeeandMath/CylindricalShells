@@ -47,7 +47,7 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.002;
+	h = 0.01;
 	homog = 0.0;
 	dhomog = 0.0;
 	//r0 = 1.0;
@@ -125,8 +125,14 @@ void ElasticProblem::solve_path(){
 			evalsall[cnt] = calculate_stability();
 			save_eigenvalues(evalsall);
 		}
-		calculate_fd_stability2();
-		//calculate_fd_fourier_stability2((double) fmodein);
+
+		if (fabs(fmodein) < 1e-3){
+			calculate_fd_stability();
+		} else {
+			calculate_fd_fourier_stability((double) fmodein);
+		}
+
+
 		output_data_csv_iterative("solutions",cnt);
 		save_current_state(cnt, (cnt==0));
 
@@ -197,8 +203,8 @@ void ElasticProblem::make_grid()
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																																																																																																																													<< std::endl << "   Total number of cells: "
-																																																																																																																																																																																													<< triangulation.n_cells() << std::endl;
+																																																																																																																																																																																															<< std::endl << "   Total number of cells: "
+																																																																																																																																																																																															<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -1733,8 +1739,8 @@ void ElasticProblem::calculate_fd_stability2(){
 
 	for (int i = 0; i < Gi.size(); i++){
 		Gi[i][0] = Zero;
-		Gi[i][1] = 1.0*Iden;
-		Gi[i][2] = 0.0*Iden;
+		Gi[i][1] = 0.0*Iden;
+		Gi[i][2] = 1.0*Iden;
 		Gi[i][3] = Zero;
 
 		Di[i][0] = Zero;
@@ -2350,7 +2356,7 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 
 	}
 	Tensor<2,Ndof> Zero;
-	int zeropad = 1;
+	int zeropad = 3;
 	for (int i = 0; i < zeropad; i++){
 		f00[i] = Zero;
 		f01[i] = Zero;
@@ -2460,10 +2466,10 @@ void ElasticProblem::calculate_fd_fourier_stability(double fmode){
 		Df12wpp[i][3] = -f12[i+1]/pow(dl,3);
 		Df12wpp[i][4] = 0.5*f12[i+1]/pow(dl,3);
 
+
 		Df11wp[i][1] = f11ext[2*i-1]/pow(dl,2);
 		Df11wp[i][2] = -(f11ext[2*i-1] + f11ext[2*i+1])/pow(dl,2);
 		Df11wp[i][3] = f11ext[2*i+1]/pow(dl,2);
-
 
 
 

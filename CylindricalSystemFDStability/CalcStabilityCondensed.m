@@ -4,7 +4,7 @@ Neigs = 10;
 lowesteigs = zeros(Neigs,Nsteps);
 
 
-ploton = false;
+ploton = true;
 eigvalplotoffset = false;
 skip = 10;
 figure();
@@ -15,7 +15,7 @@ Neigskip = 0;
 Neigplot = 8;
 noffset = 4;
 Ndof = 6;
-parfor i = 1:skip:Nsteps
+for i = 1:skip:Nsteps
     i
     Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);
     dl = 1/size(Mv,1);
