@@ -13,8 +13,8 @@ if not(ploton)
 end
 Neigskip = 0;
 Neigplot = 4;
-noffset = 12;
-Ndof = 24;
+noffset = 24;
+Ndof = 6;
 for i = 1:skip:Nsteps
     i
     Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);

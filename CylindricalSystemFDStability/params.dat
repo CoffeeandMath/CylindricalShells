@@ -1,0 +1,20 @@
+# h: Thickness of shell
+0.01
+# refinelevel: number of mesh refinements
+7
+# NstepsPre: number of steps in initialization
+400
+# Nstep: number of steps in the iterations
+800
+# NFmode: number of Fourier Modes to analyze
+4
+# Deformation parameters (unused)
+0.3
+0
+-1
+0
+0
+0.5
+1
+0
+-0.3

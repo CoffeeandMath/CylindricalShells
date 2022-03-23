@@ -55,12 +55,15 @@ DEAL_II_SETUP_TARGET(materialclass)
 ADD_LIBRARY(elasticproblemclass ${CMAKE_SOURCE_DIR}/src/elastic_problem.cc)
 DEAL_II_SETUP_TARGET(elasticproblemclass)
 
+ADD_LIBRARY(read_file ${CMAKE_SOURCE_DIR}/src/read_file.cpp)
+DEAL_II_SETUP_TARGET(read_file)
 
 
 ADD_EXECUTABLE(run ${CMAKE_SOURCE_DIR}/src/step-4.cc)
 DEAL_II_SETUP_TARGET(run)
 TARGET_LINK_LIBRARIES(elasticproblemclass referenceclass)
 TARGET_LINK_LIBRARIES(elasticproblemclass materialclass)
+TARGET_LINK_LIBRARIES(elasticproblemclass read_file)
 TARGET_LINK_LIBRARIES(run elasticproblemclass)
 
 #PROJECT(${TARGET})

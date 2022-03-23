@@ -4,7 +4,7 @@ Neigs = 10;
 lowesteigs = zeros(Neigs,Nsteps);
 
 
-ploton = false;
+ploton = true;
 padding = false;
 padding2 = true;
 eigvalplotoffset = false;
@@ -17,9 +17,9 @@ Neigskip = 0;
 Neigplot = 5;
 
 Ndof = 2;
-parfor i = 1:skip:Nsteps
+for i = 1:skip:Nsteps
     i
-    Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)) , '.csv']);
+    Mv = load(['build/stabmatrices/stabmatrix' , num2str(iter(i)), '_0' , '.csv']);
     dl = max(size(Mv))/Ndof;
     [A,B] = eigs(Mv,Neigs,'SM');
     evs = sort(real(diag(B)));

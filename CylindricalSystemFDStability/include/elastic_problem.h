@@ -35,6 +35,7 @@
 #include <Eigen/Dense>
 #include <deal.II/lac/lapack_full_matrix.h>
 #include "internalvariable.h"
+#include "read_file.h"
 //namespace fs = std::filesystem;
 
 #include "material_class.h"
@@ -97,6 +98,7 @@ private:
 	Vector<double> calculate_stability();
 	void save_eigenvalues(std::vector<Vector<double>>);
 	void save_matrix(const LAPACKFullMatrix<double> &);
+	void save_matrix_ind(const LAPACKFullMatrix<double> &, int);
 
 
 	Triangulation<DIM> triangulation;
@@ -175,6 +177,11 @@ private:
 	int N2max = 0;
 
 	int fmodein = 1;
+
+	read_file rf;
+	some_data dat;
+
+
 
 	enum BoundaryConditions{
 		Real=0,Testcase,Slopecase,TaylorExpansioncase, TaylorExpansioncase2

@@ -47,19 +47,23 @@ ElasticProblem::ElasticProblem()
 
 void ElasticProblem::solve_path(){
 
-	h = 0.01;
+	//h = 0.001;
+	h = dat.h;
+	N2max = dat.Nsteps;
+	fmodein = dat.NFmode;
 	homog = 0.0;
 	dhomog = 0.0;
+
 	//r0 = 1.0;
 
-	bool StabilityCalcs = false;
+	bool StabilityCalcs = true;
 	initialize_reference_config();
 
 	double defmagmin = 0.00;
 	//double defmagmax = 0.6*pi;
 	double defmagmax = 4.;
-	int Nmax = 400;
-	N2max = 800;
+	int Nmax = dat.NstepsPre;
+	//N2max = 800;
 
 	std::vector<double> defmagvec = linspace(defmagmin,defmagmax,Nmax);
 
@@ -81,7 +85,7 @@ void ElasticProblem::solve_path(){
 	std::vector<double> defmagbendingvec = linspace(defmagbendingmin,defmagbendingmax,N2max);
 	std::vector<double> defmaginplanevec = linspace(0.0,0.5,N2max);
 	inplane_dir[0][0] = 1.0;
-	inplane_dir[1][1] = -.30;
+	inplane_dir[1][1] = -.80;
 
 	bending_dir[0][0] = -1.0;
 	bending_dir[1][1] = 0.0;
@@ -118,20 +122,22 @@ void ElasticProblem::solve_path(){
 
 		if(StabilityCalcs){
 
-			assemble_constraint_system();
-			assemble_system();
-			construct_reduced_mappings();
-			output_stability_matrices(cnt);
-			evalsall[cnt] = calculate_stability();
-			save_eigenvalues(evalsall);
-		}
 
-		if (fabs(fmodein) < 1e-3){
-			calculate_fd_stability();
-		} else {
-			calculate_fd_fourier_stability((double) fmodein);
-		}
 
+
+			if (fabs(fmodein) < 1e-3){
+				calculate_fd_stability2();
+			} else {
+				calculate_fd_fourier_stability2((double) fmodein);
+			}
+
+			int fmodemax = fmodein;
+
+			calculate_fd_stability2();
+			for (int fm = 1; fm < fmodemax; fm++){
+				calculate_fd_fourier_stability2((double) fm);
+			}
+		}
 
 		output_data_csv_iterative("solutions",cnt);
 		save_current_state(cnt, (cnt==0));
@@ -200,11 +206,12 @@ void ElasticProblem::solve_path(){
 void ElasticProblem::make_grid()
 {
 	GridGenerator::hyper_cube(triangulation, 0.0, Smax);
+	refinelevel = dat.refinelevel;
 	triangulation.refine_global(refinelevel);
 
 	std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-																																																																																																																																																																																															<< std::endl << "   Total number of cells: "
-																																																																																																																																																																																															<< triangulation.n_cells() << std::endl;
+																																																																																																																																																																																																	<< std::endl << "   Total number of cells: "
+																																																																																																																																																																																																	<< triangulation.n_cells() << std::endl;
 }
 
 // @sect4{Step4::setup_system}
@@ -1921,7 +1928,7 @@ void ElasticProblem::calculate_fd_stability2(){
 	G.Tmmult(Hout,F0,true);
 
 
-	save_matrix(Hout);
+	save_matrix_ind(Hout,0);
 
 
 }
@@ -2804,8 +2811,8 @@ void ElasticProblem::calculate_fd_fourier_stability2(double fmode){
 
 	for (int i = 0; i < Gi.size(); i++){
 		Gi[i][0] = Zero;
-		Gi[i][1] = 1.0*Iden;
-		Gi[i][2] = 0.0*Iden;
+		Gi[i][1] = 0.0*Iden;
+		Gi[i][2] = 1.0*Iden;
 		Gi[i][3] = Zero;
 
 		Di[i][0] = Zero;
@@ -2987,7 +2994,7 @@ void ElasticProblem::calculate_fd_fourier_stability2(double fmode){
 	G.Tmmult(Hout,F0,true);
 
 
-	save_matrix(Hout);
+	save_matrix_ind(Hout,round(fmode));
 
 }
 
@@ -3862,6 +3869,25 @@ void ElasticProblem::save_matrix(const LAPACKFullMatrix<double> & min){
 
 	rfile.close();
 }
+
+
+void ElasticProblem::save_matrix_ind(const LAPACKFullMatrix<double> & min, int fm){
+	std::ofstream rfile;
+	std::string rfilename = "stabmatrices/stabmatrix" + std::to_string(solveiteration) + "_" + std::to_string(fm) + ".csv";
+	rfile.open(rfilename);
+
+	for (unsigned int i = 0; i < min.n_rows(); ++i){
+		for (unsigned int j = 0; j < min.n_cols(); j++){
+			rfile << std::setprecision(10) << min(i,j) << ',';
+		}
+		rfile << '\n';
+
+	}
+
+
+	rfile.close();
+}
+
 void ElasticProblem::output_results() const
 {
 	DataOut<DIM> data_out;
@@ -3970,6 +3996,7 @@ void ElasticProblem::save_current_state(unsigned int indx, bool firstTime){
 
 void ElasticProblem::run()
 {
+	/*
 	std::cout << "Set refinement level: " ;
 	std::cin >> refinelevel;
 	std::cout << std::endl;
@@ -3979,6 +4006,17 @@ void ElasticProblem::run()
 	std::cout << std::endl;
 	std::cout << "Solving problem in " << DIM << " space dimensions."
 			<< std::endl;
+
+
+	std::cout << "Choose thickness: ";
+	std::cin >> h;
+	std::cout << std::endl;
+
+*/
+	std::string str = "../params.dat";
+	char *cstr = new char[str.length() + 1];
+	strcpy(cstr, str.c_str());
+	rf.readInputFile(cstr, dat);
 
 	make_grid();
 
